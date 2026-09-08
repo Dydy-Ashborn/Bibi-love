@@ -49,6 +49,13 @@ de page en pleine soirée qui remettrait les scores à zéro est inacceptable : 
 La sauvegarde a lieu après la révélation, et la reprise enchaîne donc sur la question
 suivante — sinon les points de la dernière question seraient comptés deux fois.
 
+**Font Awesome vendorisé en sous-ensemble, pas de CDN.** Les emojis ne rendent pas pareil
+d'un OS à l'autre (et pas du tout sur certains Android), ce qui casse une DA qui repose sur
+la cohérence visuelle. Font Awesome règle ça, mais un `<link>` vers un CDN aurait deux
+défauts : les icônes disparaissent hors-ligne alors que le questionnaire, lui, fonctionne
+sans réseau ; et ça ajoute une dépendance externe pour ~150 ko. Le sous-ensemble des 42
+icônes utilisées pèse 5,3 ko et vit dans le repo.
+
 ## Pièges rencontrés
 
 - **Service worker et requêtes tierces** : intercepter les GET cross-origin fait répondre

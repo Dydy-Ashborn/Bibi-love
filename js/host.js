@@ -1,6 +1,6 @@
 /* Bibi Love — parcours hôte : création, salon, plateau, podium.
  * L'hôte est le seul à lire les réponses des joueurs (règles Firestore). */
-import { $, $$, el, showScreen, toast, sfx, burst, shake, showConfirmModal, copy, initials } from './util.js';
+import { $, $$, el, icon, iconHtml, showScreen, toast, sfx, burst, shake, showConfirmModal, copy, initials } from './util.js';
 import { RULES } from './config.js';
 import {
   byId, buildPlan, optionsFor, guessPrompt, isCorrect,
@@ -71,7 +71,7 @@ function renderCouplesList() {
     input.addEventListener('input', () => { cfg.couples[i].name = input.value; });
     const row = el('div', { class: 'couple-row' }, input);
     if (cfg.mode === 'tournoi' && cfg.couples.length > 2) {
-      const del = el('button', { class: 'couple-del', title: 'Retirer' }, '✕');
+      const del = el('button', { class: 'couple-del', title: 'Retirer' }, icon('xmark'));
       del.addEventListener('click', () => { cfg.couples.splice(i, 1); renderCouplesList(); syncCreateUI(); });
       row.append(del);
     }
@@ -87,7 +87,9 @@ $('#btnAddCouple')?.addEventListener('click', () => {
 
 $('#btnCreateGame')?.addEventListener('click', async () => {
   const btn = $('#btnCreateGame');
-  btn.disabled = true; btn.textContent = 'Création…';
+  const label = 'Générer le lien ' + iconHtml('link');
+  btn.disabled = true;
+  btn.innerHTML = iconHtml('hourglass-half') + ' Création…';
   try {
     const game = await createGame(cfg);
     H.code = game.code;
@@ -96,7 +98,7 @@ $('#btnCreateGame')?.addEventListener('click', async () => {
     console.error(e);
     toast("Création impossible. Vérifie les règles Firestore.", 'err');
   } finally {
-    btn.disabled = false; btn.textContent = 'Générer le lien 🔗';
+    btn.disabled = false; btn.innerHTML = label;
   }
 });
 
@@ -112,17 +114,17 @@ function showShare(code) {
 }
 $('#btnCopyLink')?.addEventListener('click', async () => {
   const ok = await copy($('#shareLink').textContent);
-  toast(ok ? 'Lien copié 📋' : 'Copie impossible, sélectionne le lien.', ok ? 'ok' : 'err');
+  toast(ok ? 'Lien copié' : 'Copie impossible, sélectionne le lien.', ok ? 'ok' : 'err');
 });
 $('#btnShareLink')?.addEventListener('click', async () => {
   const url = $('#shareLink').textContent;
-  if (navigator.share) { try { await navigator.share({ title: 'Bibi Love', text: 'Réponds avant la soirée 😏', url }); } catch {} }
-  else { const ok = await copy(url); toast(ok ? 'Lien copié 📋' : 'Copie impossible.', ok ? 'ok' : 'err'); }
+  if (navigator.share) { try { await navigator.share({ title: 'Bibi Love', text: 'Réponds à ton questionnaire avant la soirée', url }); } catch {} }
+  else { const ok = await copy(url); toast(ok ? 'Lien copié' : 'Copie impossible.', ok ? 'ok' : 'err'); }
 });
 $('#btnGoLobby')?.addEventListener('click', () => { location.hash = '#/host/' + H.code; });
 $('#btnLobbyShare')?.addEventListener('click', async () => {
   const ok = await copy(joinUrl(H.code));
-  toast(ok ? 'Lien copié 📋' : joinUrl(H.code), ok ? 'ok' : 'info');
+  toast(ok ? 'Lien copié' : joinUrl(H.code), ok ? 'ok' : 'info');
 });
 
 /* ══════════════ SALON ══════════════ */
@@ -161,7 +163,7 @@ function renderLobby() {
     [['A', A], ['B', B]].forEach(([slot, p]) => {
       if (!p) {
         slots.append(el('div', { class: 'slot is-empty' },
-          el('div', { class: 'avatar' }, '?'),
+          el('div', { class: 'avatar' }, icon('user')),
           el('div', {}, el('div', { class: 'slot-name' }, 'En attente'),
                         el('div', { class: 'slot-state' }, 'Place ' + slot))));
         return;
@@ -171,7 +173,8 @@ function renderLobby() {
       slots.append(el('div', { class: 'slot' + (done ? ' is-done' : '') },
         el('div', { class: 'avatar' }, initials(p.name)),
         el('div', {}, el('div', { class: 'slot-name' }, p.name),
-          el('div', { class: 'slot-state' }, done ? '✓ Prêt' : `${p.answered || 0}/${total} réponses`))));
+          el('div', { class: 'slot-state', html: done ? iconHtml('circle-check') + ' Prêt'
+                                                      : `${p.answered || 0}/${total} réponses` }))));
     });
     box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
   });
@@ -182,9 +185,9 @@ function renderLobby() {
     : `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
       `les réponses manquantes compteront comme fausses.`;
   const btn = $('#btnStartLive');
-  btn.textContent = resumable ? '▶️ Reprendre la partie'
-                  : g.status === 'finished' ? '🔁 Relancer une partie'
-                  : '🎬 Lancer la partie';
+  btn.innerHTML = resumable ? iconHtml('play') + ' Reprendre la partie'
+                : g.status === 'finished' ? iconHtml('rotate-right') + ' Relancer une partie'
+                : iconHtml('clapperboard') + ' Lancer la partie';
   btn.disabled = H.players.length < 2;
 }
 
@@ -360,7 +363,7 @@ function renderLive() {
   $('#liveTimer').hidden = H.round !== 'final';
   H.phase = 'question'; H.picked = null;
   $('#btnLiveNext').hidden = H.round === 'final';
-  $('#btnLiveNext').textContent = 'Passer →';
+  $('#btnLiveNext').innerHTML = 'Passer ' + iconHtml('arrow-right');
 
   const totalQ = H.round === 'final' ? RULES.FINAL_QUESTIONS : g.perRound;
   const nowQ   = H.round === 'final' ? H.final.idx + 1 : H.qIdx + 1;
@@ -428,7 +431,7 @@ function answer(token, truth, couple, step) {
       : `Perdu !<small>Il fallait cocher l'autre case…</small>`;
   }
   renderScores(ok ? couple.id : null);
-  $('#btnLiveNext').textContent = 'Suivant →';
+  $('#btnLiveNext').innerHTML = 'Suivant ' + iconHtml('arrow-right');
   persistLive();
 }
 
@@ -506,9 +509,10 @@ function showPodium(finalWin, why) {
 
   const board = $('#podiumBoard');
   board.innerHTML = '';
+  const RANK_ICONS = ['trophy', 'medal', 'award', 'star'];
   ranked.forEach((c, i) => {
     board.append(el('div', { class: 'podium-row' + (i === 0 ? ' is-first' : '') },
-      el('span', { class: 'podium-rank' }, ['🥇','🥈','🥉','🎖️'][i] || '•'),
+      el('span', { class: 'podium-rank' }, icon(RANK_ICONS[i] || 'star')),
       el('span', { class: 'podium-name' }, c.name),
       el('span', { class: 'podium-pts' }, String(H.scores[c.id] || 0))));
   });
@@ -516,12 +520,12 @@ function showPodium(finalWin, why) {
   if (g.mode === 'duo') {
     const ratio = H.stats.asked ? H.stats.correct / H.stats.asked : 0;
     const r = rankFor(ratio);
-    $('#podiumEmoji').textContent = finalWin ? r.emoji : '💔';
+    $('#podiumEmoji').innerHTML = iconHtml(finalWin ? r.icon : 'heart-crack');
     $('#podiumTitle').textContent = r.title;
     $('#podiumLine').innerHTML =
       `${r.line}<br><small>${H.stats.correct}/${H.stats.asked} bonnes réponses · finale ${finalWin ? 'réussie' : 'ratée'} — ${why}</small>`;
   } else {
-    $('#podiumEmoji').textContent = finalWin ? '🏆' : '💔';
+    $('#podiumEmoji').innerHTML = iconHtml(finalWin ? 'trophy' : 'heart-crack');
     $('#podiumTitle').textContent = finalWin ? H.finalist.name : 'Finale perdue';
     $('#podiumLine').innerHTML = finalWin
       ? `${H.finalist.name} rafle la mise après une finale sans faute.<br><small>${why}</small>`
@@ -567,7 +571,7 @@ export function renderHistory() {
     const item = el('button', { class: 'history-item' },
       el('span', {}, el('strong', {}, g.couples.join(' · ')),
         el('small', {}, `${d} · ${g.mode === 'duo' ? 'Duo' : 'Tournoi'} · code ${g.code}`)),
-      el('span', { class: 'mono' }, '→'));
+      icon('arrow-right', 'history-go'));
     item.addEventListener('click', () => { location.hash = '#/host/' + g.code; });
     box.append(item);
   });

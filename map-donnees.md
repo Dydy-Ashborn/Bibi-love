@@ -68,8 +68,10 @@ Autres points :
 
 ## Banque de questions (js/data/questions.js)
 
-127 questions : 60 familial · 38 gênant · 29 intime, sur 4 thèmes
-(quotidien, souvenirs, goûts, complicité).
+307 questions : 130 familial · 98 gênant · 79 intime, sur 4 thèmes
+(quotidien 68 · souvenirs 51 · goûts 54 · complicité 134), dont 185 QCM sur soi et
+122 « qui de vous deux ». De quoi enchaîner une bonne dizaine de soirées sans répétition,
+le tirage excluant les questions déjà jouées.
 
 Les trois tons sont bien distincts : **Gênant** = révélations sur le couple (mensonges,
 ex, défauts, jalousie), rien de sexuel ; **Intime** = registre allusif de fin de soirée,

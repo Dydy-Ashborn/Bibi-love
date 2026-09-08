@@ -19,6 +19,19 @@ export function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+/** Crée une icône Font Awesome (sous-ensemble vendorisé dans vendor/fontawesome). */
+export function icon(name, extra = '') {
+  const i = document.createElement('i');
+  i.className = 'fa fa-' + name + (extra ? ' ' + extra : '');
+  i.setAttribute('aria-hidden', 'true');
+  return i;
+}
+
+/** Même chose en chaîne, pour les endroits qui construisent du HTML. */
+export function iconHtml(name, extra = '') {
+  return `<i class="fa fa-${name}${extra ? ' ' + extra : ''}" aria-hidden="true"></i>`;
+}
+
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -106,10 +119,17 @@ export function burst(kind = 'confetti', count = 90) {
   const layer = $('#fxLayer');
   const colors = ['#ff2d55', '#ffd166', '#ffffff', '#ff7096', '#ffb703'];
   for (let n = 0; n < count; n++) {
-    const p = document.createElement('span');
-    p.className = kind === 'hearts' ? 'fx-heart' : 'fx-confetti';
-    if (kind === 'hearts') p.textContent = ['❤️','💛','💖','💘'][n % 4];
-    else p.style.background = colors[n % colors.length];
+    let p;
+    if (kind === 'hearts') {
+      p = icon('heart');
+      p.className += ' fx-heart';
+      p.style.color = colors[n % colors.length];
+      p.style.fontSize = (18 + Math.random() * 20).toFixed(0) + 'px';
+    } else {
+      p = document.createElement('span');
+      p.className = 'fx-confetti';
+      p.style.background = colors[n % colors.length];
+    }
     p.style.left = Math.random() * 100 + 'vw';
     p.style.animationDelay = (Math.random() * 0.6).toFixed(2) + 's';
     p.style.animationDuration = (1.8 + Math.random() * 1.6).toFixed(2) + 's';

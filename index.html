@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/fontawesome/fa.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -25,20 +26,20 @@
 <!-- ═══════════════ BOOT ═══════════════ -->
 <section id="screen-boot" class="screen is-active">
   <div class="center-stack">
-    <div class="logo logo-xl"><span class="logo-heart">❤</span><span class="logo-word">Bibi&nbsp;Love</span></div>
+    <div class="logo logo-xl"><span class="logo-heart"><i class="fa fa-heart"></i></span><span class="logo-word">Bibi&nbsp;Love</span></div>
     <p class="loader-text">Chauffage des projecteurs…</p>
-    <div class="pulse-heart">❤</div>
+    <div class="pulse-heart"><i class="fa fa-heart"></i></div>
   </div>
 </section>
 
 <!-- ═══════════════ ACCUEIL ═══════════════ -->
 <section id="screen-home" class="screen">
   <div class="wrap">
-    <div class="logo logo-lg"><span class="logo-heart">❤</span><span class="logo-word">Bibi&nbsp;Love</span></div>
+    <div class="logo logo-lg"><span class="logo-heart"><i class="fa fa-heart"></i></span><span class="logo-word">Bibi&nbsp;Love</span></div>
     <p class="tagline">Le jeu qui teste ce que vous croyez savoir de l'autre.</p>
 
     <div class="home-actions">
-      <button id="btnGoCreate" class="btn btn-primary btn-xl">🎬 Créer une partie</button>
+      <button id="btnGoCreate" class="btn btn-primary btn-xl"><i class="fa fa-clapperboard"></i> Créer une partie</button>
       <div class="join-inline">
         <input id="inputJoinCode" class="input input-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
         <button id="btnGoJoin" class="btn btn-ghost">Rejoindre</button>
@@ -58,7 +59,7 @@
 <section id="screen-create" class="screen">
   <div class="wrap">
     <header class="bar">
-      <button class="btn btn-back" data-goto="#/">←</button>
+      <button class="btn btn-back" data-goto="#/" aria-label="Retour"><i class="fa fa-arrow-left"></i></button>
       <h1 class="bar-title">Nouvelle partie</h1>
     </header>
 
@@ -68,11 +69,11 @@
         <h2 class="card-title">Format</h2>
         <div class="choice-grid" data-field="mode">
           <button class="choice is-on" data-value="duo">
-            <span class="choice-emoji">💑</span><span class="choice-label">Duo</span>
+            <span class="choice-emoji"><i class="fa fa-user-group"></i></span><span class="choice-label">Duo</span>
             <span class="choice-hint">Un seul couple contre le jeu</span>
           </button>
           <button class="choice" data-value="tournoi">
-            <span class="choice-emoji">🏆</span><span class="choice-label">Tournoi</span>
+            <span class="choice-emoji"><i class="fa fa-trophy"></i></span><span class="choice-label">Tournoi</span>
             <span class="choice-hint">2 à 4 couples s'affrontent</span>
           </button>
         </div>
@@ -82,18 +83,18 @@
         <h2 class="card-title">Les couples</h2>
         <p class="card-sub">Donne-leur un nom, ils le verront en rejoignant.</p>
         <div id="couplesList" class="couples-list"></div>
-        <button id="btnAddCouple" class="btn btn-ghost btn-sm">+ Ajouter un couple</button>
+        <button id="btnAddCouple" class="btn btn-ghost btn-sm"><i class="fa fa-plus"></i> Ajouter un couple</button>
       </div>
 
       <div class="card" id="cardPairing">
         <h2 class="card-title">Composition</h2>
         <div class="choice-grid" data-field="pairing">
           <button class="choice is-on" data-value="mixte">
-            <span class="choice-emoji">👫</span><span class="choice-label">Couples mixtes</span>
+            <span class="choice-emoji"><i class="fa fa-venus-mars"></i></span><span class="choice-label">Couples mixtes</span>
             <span class="choice-hint">Manches « les femmes » / « les hommes »</span>
           </button>
           <button class="choice" data-value="libre">
-            <span class="choice-emoji">🫶</span><span class="choice-label">Composition libre</span>
+            <span class="choice-emoji"><i class="fa fa-hand-holding-heart"></i></span><span class="choice-label">Composition libre</span>
             <span class="choice-hint">Manches annoncées par prénoms</span>
           </button>
         </div>
@@ -104,15 +105,15 @@
         <p class="card-sub">À régler <strong>avant</strong> d'envoyer le lien : il détermine les questions posées en amont.</p>
         <div class="choice-grid choice-grid-3" data-field="spice">
           <button class="choice is-on" data-value="1">
-            <span class="choice-emoji">🍼</span><span class="choice-label">Familial</span>
+            <span class="choice-emoji"><i class="fa fa-baby"></i></span><span class="choice-label">Familial</span>
             <span class="choice-hint">Apéro, belle-famille, enfants dans la pièce.</span>
           </button>
           <button class="choice" data-value="2">
-            <span class="choice-emoji">😬</span><span class="choice-label">Gênant</span>
+            <span class="choice-emoji"><i class="fa fa-face-grimace"></i></span><span class="choice-label">Gênant</span>
             <span class="choice-hint">Mensonges, ex, défauts. Ça révèle, rien de sexuel.</span>
           </button>
           <button class="choice" data-value="3">
-            <span class="choice-emoji">🔥</span><span class="choice-label">Intime</span>
+            <span class="choice-emoji"><i class="fa fa-fire"></i></span><span class="choice-label">Intime</span>
             <span class="choice-hint">Registre allusif de fin de soirée, jamais explicite.</span>
           </button>
         </div>
@@ -128,7 +129,7 @@
         <p id="createSummary" class="summary-line"></p>
       </div>
 
-      <button id="btnCreateGame" class="btn btn-primary btn-xl">Générer le lien 🔗</button>
+      <button id="btnCreateGame" class="btn btn-primary btn-xl">Générer le lien <i class="fa fa-link"></i></button>
     </div>
   </div>
 </section>
@@ -142,10 +143,10 @@
       <p class="card-sub">Envoie ce lien à tous les joueurs. Chacun répond de son côté, personne ne voit les réponses des autres.</p>
       <div class="link-box"><span id="shareLink" class="link-text">—</span></div>
       <div class="row-btns">
-        <button id="btnCopyLink" class="btn btn-primary">📋 Copier le lien</button>
-        <button id="btnShareLink" class="btn btn-ghost">Partager…</button>
+        <button id="btnCopyLink" class="btn btn-primary"><i class="fa fa-copy"></i> Copier le lien</button>
+        <button id="btnShareLink" class="btn btn-ghost"><i class="fa fa-share-nodes"></i> Partager…</button>
       </div>
-      <button id="btnGoLobby" class="btn btn-gold btn-xl">Ouvrir le salon d'attente →</button>
+      <button id="btnGoLobby" class="btn btn-gold btn-xl">Ouvrir le salon d'attente <i class="fa fa-arrow-right"></i></button>
     </div>
   </div>
 </section>
@@ -154,15 +155,15 @@
 <section id="screen-lobby" class="screen">
   <div class="wrap">
     <header class="bar">
-      <button class="btn btn-back" data-goto="#/">←</button>
+      <button class="btn btn-back" data-goto="#/" aria-label="Retour"><i class="fa fa-arrow-left"></i></button>
       <h1 class="bar-title">Salon — <span id="lobbyCode" class="mono"></span></h1>
-      <button id="btnLobbyShare" class="btn btn-ghost btn-sm">🔗 Lien</button>
+      <button id="btnLobbyShare" class="btn btn-ghost btn-sm"><i class="fa fa-link"></i> Lien</button>
     </header>
     <p id="lobbyStatus" class="card-sub"></p>
     <div id="lobbyCouples" class="lobby-couples"></div>
     <div class="row-btns row-btns-sticky">
-      <button id="btnStartLive" class="btn btn-primary btn-xl">🎬 Lancer la partie</button>
-      <button id="btnDeleteGame" class="btn btn-danger btn-sm">Supprimer la partie</button>
+      <button id="btnStartLive" class="btn btn-primary btn-xl"><i class="fa fa-clapperboard"></i> Lancer la partie</button>
+      <button id="btnDeleteGame" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i> Supprimer la partie</button>
     </div>
   </div>
 </section>
@@ -184,12 +185,12 @@
       <div id="liveQuestion" class="tv-question"></div>
       <div id="liveOptions" class="tv-options"></div>
       <div id="liveVerdict" class="tv-verdict" hidden></div>
-      <div id="liveTimer" class="tv-timer" hidden><span id="liveTimerNum">45</span></div>
+      <div id="liveTimer" class="tv-timer" hidden><i class="fa fa-stopwatch"></i> <span id="liveTimerNum">45</span></div>
     </div>
 
     <footer class="tv-foot">
       <span id="liveProgress" class="tv-progress"></span>
-      <button id="btnLiveNext" class="btn btn-gold btn-xl">Suivant →</button>
+      <button id="btnLiveNext" class="btn btn-gold btn-xl">Suivant <i class="fa fa-arrow-right"></i></button>
     </footer>
   </div>
 </section>
@@ -198,12 +199,12 @@
 <section id="screen-podium" class="screen screen-tv">
   <div class="wrap">
     <div class="center-stack">
-      <div id="podiumEmoji" class="podium-emoji">🏆</div>
+      <div id="podiumEmoji" class="podium-emoji"><i class="fa fa-trophy"></i></div>
       <h1 id="podiumTitle" class="podium-title">—</h1>
       <p id="podiumLine" class="podium-line"></p>
       <div id="podiumBoard" class="podium-board"></div>
       <div class="row-btns">
-        <button id="btnReplay" class="btn btn-primary btn-xl">Rejouer une partie</button>
+        <button id="btnReplay" class="btn btn-primary btn-xl"><i class="fa fa-rotate-right"></i> Rejouer une partie</button>
         <button class="btn btn-ghost" data-goto="#/">Accueil</button>
       </div>
     </div>
@@ -213,7 +214,7 @@
 <!-- ═══════════════ REJOINDRE (JOUEUR) ═══════════════ -->
 <section id="screen-join" class="screen">
   <div class="wrap">
-    <div class="logo logo-md"><span class="logo-heart">❤</span><span class="logo-word">Bibi&nbsp;Love</span></div>
+    <div class="logo logo-md"><span class="logo-heart"><i class="fa fa-heart"></i></span><span class="logo-word">Bibi&nbsp;Love</span></div>
     <div id="joinIntro" class="card">
       <h2 class="card-title">On t'attend !</h2>
       <p id="joinMeta" class="card-sub"></p>
@@ -225,7 +226,7 @@
         <span class="field-label">Ton couple</span>
         <div id="joinCouples" class="choice-grid"></div>
       </div>
-      <button id="btnJoinConfirm" class="btn btn-primary btn-xl">C'est parti →</button>
+      <button id="btnJoinConfirm" class="btn btn-primary btn-xl">C'est parti <i class="fa fa-arrow-right"></i></button>
     </div>
   </div>
 </section>
@@ -243,7 +244,7 @@
       <div id="quizOptions" class="quiz-options"></div>
     </div>
     <footer class="quiz-foot">
-      <button id="btnQuizPrev" class="btn btn-ghost btn-sm">← Précédent</button>
+      <button id="btnQuizPrev" class="btn btn-ghost btn-sm"><i class="fa fa-arrow-left"></i> Précédent</button>
       <span class="quiz-hint">Réponds pour toi, sincèrement. Ton/ta partenaire devra deviner.</span>
     </footer>
   </div>
@@ -253,7 +254,7 @@
 <section id="screen-done" class="screen">
   <div class="wrap">
     <div class="center-stack">
-      <div class="pulse-heart big">❤</div>
+      <div class="pulse-heart big"><i class="fa fa-heart"></i></div>
       <h1 class="podium-title">C'est envoyé !</h1>
       <p id="doneLine" class="card-sub"></p>
       <div id="doneRecap" class="done-recap"></div>
@@ -274,7 +275,7 @@
 </div>
 
 <div id="toast" class="toast"></div>
-<button id="btnMute" class="mute-btn" title="Son">🔊</button>
+<button id="btnMute" class="mute-btn" title="Son" aria-label="Couper le son"><i class="fa fa-volume-high"></i></button>
 
 <script type="module" src="js/app.js"></script>
 </body>

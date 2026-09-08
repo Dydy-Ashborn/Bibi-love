@@ -1,6 +1,6 @@
 /* Bibi Love — parcours joueur : rejoindre puis répondre en amont.
  * Le joueur ne voit jamais les réponses de son conjoint (règles Firestore). */
-import { $, $$, el, showScreen, toast, sfx, burst, shuffle } from './util.js';
+import { $, $$, el, icon, iconHtml, showScreen, toast, sfx, burst, shuffle } from './util.js';
 import { byId, optionsFor, selfPrompt } from './game.js';
 import { THEMES, SPICE } from './data/questions.js';
 import { loadGame, joinGame, myPlayer, myAnswers, saveAnswer, watchPlayers, uid } from './store.js';
@@ -35,7 +35,7 @@ function renderJoin() {
   const g = state.game;
   if (!g) return;
   const sp = SPICE[g.spice] || SPICE[1];
-  const spiceLabel = `${sp.label} ${sp.emoji}`;
+  const spiceLabel = `${iconHtml(sp.icon)} ${sp.label}`;
   const total = g.questionIds.length;
   $('#joinMeta').innerHTML =
     `Ambiance <strong>${spiceLabel}</strong> · ${total} questions · environ ${Math.ceil(total * 0.35)} minutes.<br>` +
@@ -114,7 +114,7 @@ function renderQuestion() {
   $('#quizBar').style.width = ((state.idx) / total * 100).toFixed(1) + '%';
   $('#quizCount').textContent = `${state.idx + 1} / ${total}`;
   const th = THEMES[q.t];
-  $('#quizTheme').textContent = `${th.emoji} ${th.label}`;
+  $('#quizTheme').innerHTML = `${iconHtml(th.icon)} ${th.label}`;
   $('#quizQuestion').textContent = selfPrompt(q);
   $('#btnQuizPrev').disabled = state.idx === 0;
 

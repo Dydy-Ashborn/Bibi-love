@@ -1,5 +1,5 @@
 /* Bibi Love — routeur et amorçage. */
-import { $, showScreen, toast, sfx, toggleMute, isMuted } from './util.js';
+import { $, iconHtml, showScreen, toast, sfx, toggleMute, isMuted } from './util.js';
 import { ready } from './firebase.js';
 import { enterCreate, enterLobby, renderHistory, leaveHost } from './host.js';
 import { enterJoin, leavePlayer } from './player.js';
@@ -46,8 +46,9 @@ $('#btnGoJoin')?.addEventListener('click', () => {
 $('#inputJoinCode')?.addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnGoJoin').click(); });
 
 const muteBtn = $('#btnMute');
-muteBtn.textContent = isMuted() ? '🔇' : '🔊';
-muteBtn.addEventListener('click', () => { muteBtn.textContent = toggleMute() ? '🔊' : '🔇'; });
+const muteIcon = on => iconHtml(on ? 'volume-high' : 'volume-xmark');
+muteBtn.innerHTML = muteIcon(!isMuted());
+muteBtn.addEventListener('click', () => { muteBtn.innerHTML = muteIcon(toggleMute()); });
 
 /* Raccourcis clavier pour l'animateur : A/B/C/D pour répondre, Espace pour avancer. */
 document.addEventListener('keydown', e => {

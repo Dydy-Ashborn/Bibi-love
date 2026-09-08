@@ -5,7 +5,8 @@ const SHELL = [
   './', './index.html', './css/style.css',
   './js/app.js', './js/host.js', './js/player.js', './js/store.js',
   './js/game.js', './js/util.js', './js/firebase.js', './js/config.js',
-  './js/data/questions.js', './manifest.webmanifest', './icons/icon.svg'
+  './js/data/questions.js', './manifest.webmanifest', './icons/icon.svg',
+  './vendor/fontawesome/fa.css', './vendor/fontawesome/fa-solid-subset.woff2'
 ];
 
 self.addEventListener('install', e => {

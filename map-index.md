@@ -6,16 +6,16 @@ Aiguillage global. Aucun détail comportemental ici : voir les maps spécialisé
 |---|---|---|---|
 | Coque PWA, routeur, boot | `index.html`, `js/app.js`, `sw.js`, `manifest.webmanifest` | [map-front](map-front.md) | ✅ v1 |
 | Direction artistique | `css/style.css`, `icons/` | [map-front](map-front.md) | ✅ v1 |
+| Iconographie (Font Awesome vendorisé) | `vendor/fontawesome/` | [map-front](map-front.md) | ✅ 42 icônes, 5,3 ko |
 | Parcours hôte (création → plateau → podium) | `js/host.js` | [map-front](map-front.md) | ✅ v1 |
 | Parcours joueur (rejoindre → questionnaire) | `js/player.js` | [map-front](map-front.md) | ✅ v1 |
 | Logique de jeu pure | `js/game.js`, `js/config.js` | [map-front](map-front.md) | ✅ v1 |
 | Accès Firestore + mémoire locale hôte | `js/store.js`, `js/firebase.js` | [map-donnees](map-donnees.md) | ✅ v1 |
-| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 127 questions |
+| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 307 questions |
 | Règles de sécurité | `firestore.rules` | [map-donnees](map-donnees.md) | ✅ v1 |
 
 ## Chantiers ouverts
 
 - [ ] Déploiement réel : `firebase deploy` non encore lancé (auth anonyme à activer d'abord).
 - [ ] Manette téléphone : faire deviner depuis le mobile du conjoint plutôt que sur l'écran maître (voir `decisions.md`).
-- [ ] Étoffer la banque : 127 questions aujourd'hui, viser 250 pour enchaîner 5+ soirées sans répétition.
 - [x] Reprise de partie en cours : état sauvegardé dans `games/{code}.live`, bouton « Reprendre » au salon.

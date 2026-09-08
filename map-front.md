@@ -7,6 +7,19 @@ projecteur animés (`.beam`) + un rideau de velours en dégradé masqué (`.curt
 Boutons à ombre portée dure (effet « touche de plateau ») qui s'enfonce au clic.
 Identité originale : aucun élément de la marque télé n'est repris.
 
+## Iconographie — vendor/fontawesome
+Aucun emoji dans l'interface : tout passe par Font Awesome 6 Free Solid. Le paquet n'est
+**pas** chargé depuis un CDN mais vendorisé en sous-ensemble : `pyftsubset` ne garde que
+les 42 glyphes réellement utilisés, soit **5,3 ko** de woff2 au lieu de ~150 ko. C'est une
+PWA — les icônes doivent survivre au mode hors-ligne, et le service worker les met en cache
+avec le reste de la coque.
+*Conséquence à retenir* : ajouter une icône ne se fait pas en écrivant une classe `fa-…`
+dans le HTML, il faut régénérer le sous-ensemble (voir l'entête de `vendor/fontawesome/fa.css`),
+sinon le glyphe s'affiche en carré vide.
+Les helpers `icon(nom)` (élément) et `iconHtml(nom)` (chaîne) de `util.js` sont le seul
+point de création : les noms d'icônes vivent dans les données (`THEMES[].icon`,
+`SPICE[].icon`, `rankFor().icon`), jamais en dur dans le rendu.
+
 ## js/app.js — routeur
 
 - `route()` — routeur sur `location.hash`. Quatre routes : `#/` accueil, `#/create`

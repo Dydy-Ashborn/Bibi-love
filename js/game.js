@@ -116,13 +116,13 @@ export function isCorrect(guessToken, sourceToken) {
   return guessToken != null && sourceToken != null && guessToken === sourceToken;
 }
 
-/** Rang de complicité (mode Duo). */
+/** Rang de complicité (mode Duo). `icon` = nom Font Awesome du sous-ensemble vendorisé. */
 export function rankFor(ratio) {
-  if (ratio >= 0.9) return { title: 'Âmes sœurs',   line: "Vous êtes la même personne dans deux corps. C'est presque inquiétant.", emoji: '💞' };
-  if (ratio >= 0.7) return { title: 'Complices',    line: 'Vous vous connaissez par cœur, à deux ou trois détails près.',          emoji: '❤️‍🔥' };
-  if (ratio >= 0.5) return { title: 'Bien assortis',line: 'Solide. Il reste juste quelques zones d\'ombre à explorer.',            emoji: '💘' };
-  if (ratio >= 0.3) return { title: 'En rodage',    line: 'Ça vient. Prévoyez une deuxième partie, et une longue discussion.',      emoji: '💛' };
-  return                   { title: 'Colocataires', line: 'Vous partagez un appartement. L\'amour, on va dire que ça se travaille.', emoji: '🫠' };
+  if (ratio >= 0.9) return { title: 'Âmes sœurs',    icon: 'heart-circle-check',  line: "Vous êtes la même personne dans deux corps. C'est presque inquiétant." };
+  if (ratio >= 0.7) return { title: 'Complices',     icon: 'fire-flame-curved',   line: 'Vous vous connaissez par cœur, à deux ou trois détails près.' };
+  if (ratio >= 0.5) return { title: 'Bien assortis', icon: 'heart',               line: "Solide. Il reste juste quelques zones d'ombre à explorer." };
+  if (ratio >= 0.3) return { title: 'En rodage',     icon: 'hand-holding-heart',  line: 'Ça vient. Prévoyez une deuxième partie, et une longue discussion.' };
+  return                   { title: 'Colocataires',  icon: 'face-meh',            line: "Vous partagez un appartement. L'amour, on va dire que ça se travaille." };
 }
 
 export { byId, QUESTIONS };
