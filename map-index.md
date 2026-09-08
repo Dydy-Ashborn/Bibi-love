@@ -18,4 +18,4 @@ Aiguillage global. Aucun détail comportemental ici : voir les maps spécialisé
 - [ ] Déploiement réel : `firebase deploy` non encore lancé (auth anonyme à activer d'abord).
 - [ ] Manette téléphone : faire deviner depuis le mobile du conjoint plutôt que sur l'écran maître (voir `decisions.md`).
 - [ ] Étoffer la banque : 127 questions aujourd'hui, viser 250 pour enchaîner 5+ soirées sans répétition.
-- [ ] Reprise de partie en cours : si l'hôte recharge pendant le live, les scores repartent à zéro.
+- [x] Reprise de partie en cours : état sauvegardé dans `games/{code}.live`, bouton « Reprendre » au salon.

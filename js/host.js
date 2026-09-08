@@ -176,16 +176,42 @@ function renderLobby() {
     box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
   });
 
-  $('#lobbyStatus').innerHTML =
-    `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
-    `les réponses manquantes compteront comme fausses.`;
-  $('#btnStartLive').disabled = H.players.length < 2;
+  const resumable = canResume(g);
+  $('#lobbyStatus').innerHTML = resumable
+    ? `Partie en cours — <strong>${resumeLabel(g)}</strong>. Les scores ont été sauvegardés, tu reprends exactement où tu t'es arrêté.`
+    : `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
+      `les réponses manquantes compteront comme fausses.`;
+  const btn = $('#btnStartLive');
+  btn.textContent = resumable ? '▶️ Reprendre la partie'
+                  : g.status === 'finished' ? '🔁 Relancer une partie'
+                  : '🎬 Lancer la partie';
+  btn.disabled = H.players.length < 2;
+}
+
+/** Une partie est reprenable si elle a été lancée et n'est pas terminée. */
+function canResume(g) {
+  return g && g.status === 'live' && g.live && g.live.phase && g.live.phase !== 'idle';
+}
+
+function resumeLabel(g) {
+  const L = g.live;
+  if (L.round === 'final') return `finale, question ${(L.final?.idx || 0) + 1}/${RULES.FINAL_QUESTIONS}`;
+  return `manche ${L.round}, question ${(L.qIdx || 0) + 1}/${g.perRound}`;
 }
 
 $('#btnStartLive')?.addEventListener('click', () => {
+  if (canResume(H.game)) { startLive(true); return; }
+
   const total = H.game.questionIds.length;
   const late = H.players.filter(p => (p.answered || 0) < total).map(p => p.name);
-  const go = () => startLive();
+  const go = () => startLive(false);
+
+  if (H.game.status === 'finished') {
+    showConfirmModal(
+      "Cette partie est terminée. La relancer remet tous les scores à zéro sur les mêmes questions. On y va ?",
+      go, { okLabel: 'Relancer' });
+    return;
+  }
   if (late.length) {
     showConfirmModal(
       `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} pas terminé. Leurs questions sans réponse seront perdues. On lance quand même ?`,
@@ -200,16 +226,76 @@ $('#btnDeleteGame')?.addEventListener('click', () => {
 });
 
 /* ══════════════ PLATEAU ══════════════ */
-async function startLive() {
+/**
+ * Lance ou reprend le plateau.
+ * @param {boolean} resume true = repart de l'état sauvegardé dans games/{code}.live
+ */
+async function startLive(resume = false) {
   const g = H.game;
   H.answers = await allAnswers(H.code, H.players);
   H.plan = buildPlan(g.questionIds, g.perRound);
+
+  if (resume && canResume(g)) {
+    const L = g.live;
+    H.round     = L.round;
+    H.qIdx      = L.qIdx || 0;
+    H.coupleIdx = L.coupleIdx || 0;
+    H.scores    = Object.assign({}, L.scores);
+    H.stats     = Object.assign({ asked: 0, correct: 0 }, L.stats);
+    H.finalist  = L.finalistId ? g.couples.find(c => c.id === L.finalistId) || null : null;
+    H.final     = L.final ? Object.assign({}, L.final) : null;
+    g.couples.forEach(c => { if (H.scores[c.id] == null) H.scores[c.id] = 0; });
+    H.phase = 'question'; H.picked = null;
+    showScreen('screen-live');
+
+    // La sauvegarde a eu lieu après la révélation : on enchaîne sur la question suivante
+    // au lieu de reproposer celle déjà jouée (sinon les points seraient comptés deux fois).
+    if (L.phase === 'reveal') {
+      if (H.round === 'final') { resumeFinalTimer(); nextFinal(); }
+      else advance();
+      return;
+    }
+    if (H.round === 'final') { renderLive(); resumeFinalTimer(); }
+    else renderLive();
+    toast('Partie reprise là où tu en étais.', 'ok');
+    return;
+  }
+
   H.round = 1; H.qIdx = 0; H.coupleIdx = 0; H.phase = 'question'; H.picked = null;
   H.stats = { asked: 0, correct: 0 };
+  H.finalist = null; H.final = null;
   H.scores = {}; g.couples.forEach(c => { H.scores[c.id] = 0; });
-  await patchGame(H.code, { status: 'live' }).catch(() => {});
+  await patchGame(H.code, { status: 'live', finalResult: null, finalistId: null }).catch(() => {});
   showScreen('screen-live');
   renderLive();
+  persistLive();
+}
+
+/**
+ * Sauvegarde l'état du plateau dans le doc de partie.
+ * Appelée à chaque transition (révélation, question suivante, manche suivante) :
+ * un rafraîchissement de page ou un changement d'appareil ne perd plus les scores.
+ * Volontairement non bloquante — un échec réseau ne doit jamais figer le jeu.
+ */
+function persistLive() {
+  if (!H.code) return;
+  patchGame(H.code, {
+    live: {
+      started: true,
+      round: H.round,
+      qIdx: H.qIdx,
+      coupleIdx: H.coupleIdx,
+      phase: H.phase,
+      scores: H.scores,
+      stats: H.stats,
+      finalistId: H.finalist ? H.finalist.id : null,
+      final: H.final ? {
+        idx: H.final.idx, correct: H.final.correct,
+        errors: H.final.errors, left: H.final.left, over: !!H.final.over
+      } : null,
+      updatedAt: Date.now()
+    }
+  }).catch(() => { /* silencieux : la partie continue en mémoire */ });
 }
 
 function names(c) {
@@ -321,6 +407,7 @@ function answer(token, truth, couple, step) {
     v.textContent = ok ? 'Exact !' : 'Raté…';
     $('#liveProgress').textContent =
       `Question ${H.final.idx + 1}/${RULES.FINAL_QUESTIONS} · ${H.final.errors} erreur(s)`;
+    persistLive();
     setTimeout(() => nextFinal(), 700);
     return;
   }
@@ -342,6 +429,7 @@ function answer(token, truth, couple, step) {
   }
   renderScores(ok ? couple.id : null);
   $('#btnLiveNext').textContent = 'Suivant →';
+  persistLive();
 }
 
 $('#btnLiveNext')?.addEventListener('click', () => {
@@ -361,6 +449,7 @@ function advance() {
     }
   }
   renderLive();
+  persistLive();
 }
 
 /* ── Finale chronométrée ──────────────────────────────────────── */
@@ -371,8 +460,15 @@ function startFinal() {
   H.round = 'final';
   H.final = { idx: 0, correct: 0, errors: 0, left: RULES.FINAL_SECONDS, over: false };
   renderLive();
-  $('#liveTimerNum').textContent = RULES.FINAL_SECONDS;
+  persistLive();
+  resumeFinalTimer();
+}
+
+/** Démarre (ou relance après reprise) le chrono de la finale depuis H.final.left. */
+function resumeFinalTimer() {
+  if (!H.final || H.final.over) return;
   clearInterval(H.timerId);
+  $('#liveTimerNum').textContent = Math.max(0, H.final.left);
   H.timerId = setInterval(() => {
     H.final.left--;
     const t = $('#liveTimer');
@@ -389,13 +485,16 @@ function nextFinal() {
   H.final.idx++;
   if (H.final.idx >= RULES.FINAL_QUESTIONS) { endFinal(true, 'Sept questions, dans les temps.'); return; }
   renderLive();
+  persistLive();
 }
 
 function endFinal(win, why) {
   if (H.final.over) return;
   H.final.over = true;
   clearInterval(H.timerId);
-  H.stats.asked += RULES.FINAL_QUESTIONS;
+  // On ne compte que les questions réellement posées : un chrono qui expire à la 3e
+  // ne doit pas plomber le ratio de complicité avec 4 questions jamais vues.
+  H.stats.asked += H.final.correct + H.final.errors;
   H.stats.correct += H.final.correct;
   showPodium(win, why);
 }
@@ -445,9 +544,16 @@ $('#btnReplay')?.addEventListener('click', () => {
 });
 
 $('#btnLiveQuit')?.addEventListener('click', () => {
-  showConfirmModal("Quitter le plateau ? Les scores de cette partie seront perdus.", () => {
-    clearInterval(H.timerId); location.hash = '#/';
-  }, { danger: true, okLabel: 'Quitter' });
+  showConfirmModal(
+    "Quitter le plateau ? Les scores sont sauvegardés : tu pourras reprendre depuis le salon.",
+    () => {
+      clearInterval(H.timerId);
+      persistLive();
+      // On est déjà sur #/host/CODE : réécrire le hash ne déclencherait aucun hashchange,
+      // donc on rappelle le salon directement.
+      enterLobby(H.code);
+    },
+    { okLabel: 'Quitter' });
 });
 
 /* ══════════════ HISTORIQUE ══════════════ */

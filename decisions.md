@@ -42,6 +42,13 @@ Nom et logo originaux (cœur rouge bombé, script doré sur bleu nuit). L'esprit
 jeux télé de complicité conjugale des années 2000 est repris, jamais la marque, le
 wordmark ni le nom d'une émission existante.
 
+**L'état du plateau est persisté en base, pas seulement en mémoire.** Un rafraîchissement
+de page en pleine soirée qui remettrait les scores à zéro est inacceptable : `persistLive()`
+écrit manche, question, couple courant, scores et état de finale dans `games/{code}.live`
+à chaque transition. Coût : ~20 écritures Firestore par partie, largement dans le gratuit.
+La sauvegarde a lieu après la révélation, et la reprise enchaîne donc sur la question
+suivante — sinon les points de la dernière question seraient comptés deux fois.
+
 ## Pièges rencontrés
 
 - **Service worker et requêtes tierces** : intercepter les GET cross-origin fait répondre
@@ -54,10 +61,13 @@ wordmark ni le nom d'une émission existante.
   d'un joueur n'est pas comparable au pronostic de l'autre.
 - **Modale réutilisable** : les écouteurs de `#confirmModalOk` doivent être détruits à la
   fermeture (`replaceWith(cloneNode())`), sinon le second usage déclenche deux callbacks.
+- **Navigation par hash vers la route courante** : écrire `location.hash = '#/host/CODE'`
+  alors qu'on y est déjà ne déclenche pas `hashchange`, donc le routeur ne s'exécute pas.
+  Le bouton « Quitter » du plateau rappelle `enterLobby()` directement.
 
 ## Limitations connues
 
-- Recharger la page pendant le live remet les scores à zéro (l'état de partie est en
-  mémoire côté hôte, pas persisté question par question).
 - L'exclusion des questions déjà jouées est locale à l'appareil de l'hôte.
 - Un couple à un seul joueur inscrit voit ses questions annulées faute de source.
+- Le chrono de la finale est sauvegardé au grain de la question, pas de la seconde : une
+  reprise en plein milieu d'une question rend le temps restant du début de celle-ci.

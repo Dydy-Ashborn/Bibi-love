@@ -58,9 +58,19 @@ Identité originale : aucun élément de la marque télé n'est repris.
   couple, passer en Tournoi en impose deux au minimum.
 - `enterLobby(code)` — refuse l'accès si `hostUid !== uid()` et redirige vers le
   questionnaire : un joueur qui ouvrirait l'URL d'admin tombe sur son propre parcours.
-- `startLive()` — charge **toutes** les réponses d'un coup (`allAnswers`) puis joue
+- `startLive(resume)` — charge **toutes** les réponses d'un coup (`allAnswers`) puis joue
   hors-ligne. Aucune lecture Firestore pendant la partie : pas de latence au moment
-  du suspense.
+  du suspense. Avec `resume=true`, restaure l'état sauvegardé (manche, question, couple
+  courant, scores, stats, finale). *Piège* : la sauvegarde a lieu **après** la révélation,
+  donc si l'état repris est en phase `reveal`, on enchaîne directement sur la question
+  suivante — rejouer celle-là compterait les points une seconde fois.
+- `persistLive()` — écrit l'état du plateau dans `games/{code}.live` à chaque transition
+  (révélation, question suivante, manche suivante, chaque question de finale). Non
+  bloquante par choix : un échec réseau ne doit jamais figer la partie en cours. Coût
+  réel : une vingtaine d'écritures Firestore par partie.
+- `canResume(g)` / `resumeLabel(g)` — une partie est reprenable si `status === 'live'` et
+  `live.phase !== 'idle'`. Le libellé du bouton du salon en découle : « Lancer »,
+  « Reprendre » ou « Relancer » selon l'état.
 - `renderLive()` — affiche question + options pour le couple courant. Deux cas dégradés
   gérés à l'écran : place vide (question annulée) et joueur qui n'a pas répondu à cette
   question (annoncé, 0 point en jeu) — ça arrive dès qu'un invité n'a pas fini.
@@ -69,12 +79,18 @@ Identité originale : aucun élément de la marque télé n'est repris.
   jette `DOMTokenList: token must not be empty` — ne jamais passer de chaîne vide.
 - `advance()` — parcourt couple → question → manche. Ordre volontaire : la même question
   est posée à tous les couples avant de passer à la suivante (rythme télé).
-- `startFinal()` / `nextFinal()` / `endFinal()` — finale du couple en tête : 7 questions,
-  45 s, défaite au-delà de 3 erreurs. `H.final.over` protège du double-appel quand le
-  chrono expire pile sur une réponse.
+- `startFinal()` / `resumeFinalTimer()` / `nextFinal()` / `endFinal()` — finale du couple
+  en tête : 7 questions, 45 s, défaite au-delà de 3 erreurs. `H.final.over` protège du
+  double-appel quand le chrono expire pile sur une réponse. Le chrono est reparti de
+  `H.final.left` (et non de 45) pour qu'une reprise ne rende pas le temps déjà écoulé.
+  `endFinal` ne compte dans les stats que les questions réellement posées : un chrono qui
+  expire à la 3e ne doit pas plomber le rang de complicité avec 4 questions jamais vues.
 - `showPodium(win, why)` — classement en Tournoi, rang de complicité en Duo (basé sur
   `H.stats.correct / H.stats.asked`, finale comprise).
 - `renderHistory()` — parties précédentes lues dans le localStorage de l'hôte.
+- Bouton « Quitter » du plateau : rappelle `enterLobby()` directement. *Piège corrigé* :
+  on est déjà sur `#/host/CODE`, donc réécrire `location.hash` ne déclenche aucun
+  `hashchange` et le bouton restait sans effet.
 
 ## js/player.js — parcours invité
 

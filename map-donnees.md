@@ -14,7 +14,17 @@ haute sans ambiguïté.
 ### games/{code}
 `hostUid`, `status` (`lobby|live|finished`), `mode` (`duo|tournoi`), `spice` (1-3),
 `pairing` (`mixte|libre`), `durationMin`, `perRound`, `couples[]`
-(`{id, name, score}`), `questionIds[]`, `finalistId`, `finalResult`.
+(`{id, name, score}`), `questionIds[]`, `finalistId`, `finalResult`, `live`.
+
+#### games/{code}.live — état du plateau, sauvegardé en continu
+`{ started, round (1|2|3|'final'), qIdx, coupleIdx, phase ('idle'|'question'|'reveal'),
+scores {coupleId: points}, stats {asked, correct}, finalistId,
+final {idx, correct, errors, left, over}, updatedAt }`
+
+Écrit par `persistLive()` à chaque transition. C'est ce qui permet de rafraîchir la page,
+de fermer l'onglet ou de changer d'écran maître sans perdre les scores : au retour dans
+le salon, le bouton devient « Reprendre la partie » et `startLive(true)` restaure tout.
+`phase: 'idle'` = partie créée mais jamais lancée.
 
 Les questions ne sont **pas** en base : elles vivent dans `js/data/questions.js`, seule
 la liste d'identifiants tirés est stockée. Zéro lecture Firestore pour afficher une
@@ -51,7 +61,8 @@ Autres points :
 - `bibi.host.games` — 12 dernières parties créées, affichées sur l'accueil.
 - `bibi.host.usedQuestions` — 400 derniers ids joués, exclus des tirages suivants.
   C'est ce qui permet d'enchaîner plusieurs parties dans la soirée sans répétition.
-  *Limite connue* : c'est par appareil. Changer d'écran maître repart de zéro.
+  *Limite connue* : c'est par appareil. Changer d'écran maître repart de zéro. (L'état
+  d'une partie en cours, lui, est en base et suit l'hôte partout.)
 - `bibi.player.name` — prénom pré-rempli quand un joueur rejoint une seconde partie.
 - `bibi.mute` — son coupé.
 
