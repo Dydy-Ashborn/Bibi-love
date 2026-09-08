@@ -1,0 +1,41 @@
+rules_version = '2';
+
+/* Bibi Love — sécurité.
+ * Principe : l'hôte est le seul à pouvoir lire les réponses de tous les joueurs.
+ * Un joueur ne lit et n'écrit que son propre document de réponses : même en ouvrant
+ * la console, il ne peut pas voir ce que son conjoint a répondu.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isHost(gameId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/games/$(gameId))
+        && get(/databases/$(database)/documents/games/$(gameId)).data.hostUid == request.auth.uid;
+    }
+
+    match /games/{gameId} {
+      // Tout joueur authentifié doit pouvoir lire la config de la partie qu'il rejoint.
+      allow read:   if signedIn();
+      allow create: if signedIn() && request.resource.data.hostUid == request.auth.uid;
+      // Sur un update/delete, resource.data porte l'état AVANT écriture (jamais request.resource sur delete).
+      allow update: if signedIn() && resource.data.hostUid == request.auth.uid
+                    && request.resource.data.hostUid == resource.data.hostUid;
+      allow delete: if signedIn() && resource.data.hostUid == request.auth.uid;
+
+      match /players/{playerId} {
+        allow read:   if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == playerId;
+        allow delete: if isHost(gameId);
+      }
+
+      match /answers/{playerId} {
+        allow read:  if signedIn() && (request.auth.uid == playerId || isHost(gameId));
+        allow write: if signedIn() && request.auth.uid == playerId;
+      }
+    }
+  }
+}

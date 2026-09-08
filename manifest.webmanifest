@@ -1,0 +1,17 @@
+{
+  "name": "Bibi Love — le jeu des couples",
+  "short_name": "Bibi Love",
+  "description": "Vos invités répondent en amont, vous animez la soirée. Trois manches et une finale chronométrée.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1236",
+  "theme_color": "#0b1236",
+  "lang": "fr",
+  "icons": [
+    { "src": "icons/icon.svg",     "sizes": "any",     "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
