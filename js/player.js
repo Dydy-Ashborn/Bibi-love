@@ -2,7 +2,7 @@
  * Le joueur ne voit jamais les réponses de son conjoint (règles Firestore). */
 import { $, $$, el, showScreen, toast, sfx, burst, shuffle } from './util.js';
 import { byId, optionsFor, selfPrompt } from './game.js';
-import { THEMES } from './data/questions.js';
+import { THEMES, SPICE } from './data/questions.js';
 import { loadGame, joinGame, myPlayer, myAnswers, saveAnswer, watchPlayers, uid } from './store.js';
 import { RULES } from './config.js';
 
@@ -34,7 +34,8 @@ export async function enterJoin(code) {
 function renderJoin() {
   const g = state.game;
   if (!g) return;
-  const spiceLabel = { 1: 'Familial 🍼', 2: 'Piquant 🌶️', 3: 'Très piquant 🔥' }[g.spice];
+  const sp = SPICE[g.spice] || SPICE[1];
+  const spiceLabel = `${sp.label} ${sp.emoji}`;
   const total = g.questionIds.length;
   $('#joinMeta').innerHTML =
     `Ambiance <strong>${spiceLabel}</strong> · ${total} questions · environ ${Math.ceil(total * 0.35)} minutes.<br>` +

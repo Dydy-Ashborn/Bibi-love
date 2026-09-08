@@ -2,7 +2,7 @@
  * Champs :
  *   i  id unique
  *   t  thème : quotidien | souvenirs | gouts | complicite
- *   s  niveau de piquant : 1 familial · 2 piquant · 3 très piquant
+ *   s  ton : 1 familial · 2 gênant (révélations, non sexuel) · 3 intime (allusif)
  *   k  type : 'self' (QCM sur soi) | 'who' (qui de vous deux)
  *   q  texte posé au joueur qui répond sur lui-même
  *   g  texte posé au conjoint qui devine ({p} = prénom du conjoint) — 'self' uniquement
@@ -156,10 +156,11 @@ export const THEMES = {
   complicite:  { label:'Complicité',  emoji:'❤️‍🔥' }
 };
 
+/* Les clés restent stables : elles ne servent qu'au code, les libellés changent librement. */
 export const SPICE = {
-  1: { key:'familial',     label:'Familial',      hint:'Apéro, belle-famille, enfants dans la pièce.' },
-  2: { key:'piquant',      label:'Piquant',       hint:'Entre potes. Ça pique, ça révèle, ça reste correct.' },
-  3: { key:'tres_piquant', label:'Très piquant',  hint:'Soirée à deux couples complices. Prévoyez les fous rires.' }
+  1: { key:'familial',     emoji:'🍼', label:'Familial', hint:'Apéro, belle-famille, enfants dans la pièce.' },
+  2: { key:'piquant',      emoji:'😬', label:'Gênant',   hint:'Mensonges, ex, défauts, jalousie. Ça révèle, rien de sexuel.' },
+  3: { key:'tres_piquant', emoji:'🔥', label:'Intime',   hint:'Registre allusif de fin de soirée, jamais explicite.' }
 };
 
 /** Pool cumulatif : le niveau choisi inclut tous les niveaux inférieurs. */

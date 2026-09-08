@@ -68,10 +68,15 @@ Autres points :
 
 ## Banque de questions (js/data/questions.js)
 
-127 questions : 60 familial · 38 piquant · 29 très piquant, sur 4 thèmes
+127 questions : 60 familial · 38 gênant · 29 intime, sur 4 thèmes
 (quotidien, souvenirs, goûts, complicité).
 
-- `s` = niveau de piquant. Le pool est **cumulatif** : choisir « très piquant » inclut
+Les trois tons sont bien distincts : **Gênant** = révélations sur le couple (mensonges,
+ex, défauts, jalousie), rien de sexuel ; **Intime** = registre allusif de fin de soirée,
+jamais explicite. Les clés internes restent `piquant` / `tres_piquant` (les libellés
+affichés sont dans `SPICE`, à modifier là et nulle part ailleurs).
+
+- `s` = ton de la question. Le pool est **cumulatif** : choisir « Intime » inclut
   les niveaux inférieurs, avec priorité au niveau choisi dans le tirage.
 - `k:'self'` — question sur soi. `q` est posé au répondant, `g` au conjoint qui devine
   (`{p}` = prénom du répondant). Les deux formulations sont indispensables : la même

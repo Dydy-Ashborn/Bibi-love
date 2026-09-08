@@ -29,14 +29,20 @@ html,body{height:100%}
 body{
   font-family:var(--font);
   color:var(--blanc);
+  background:var(--bleu-900);
+  min-height:100dvh;
+  overflow-x:hidden;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+/* Le fond dégradé vit sur une couche fixe plutôt que sur le body :
+   `background-attachment:fixed` saute ou disparaît au scroll sur iOS Safari, et c'est
+   précisément sur les écrans qui défilent (création, questionnaire) que ça se verrait. */
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
     radial-gradient(1200px 700px at 50% -10%, #2b1c62 0%, transparent 60%),
     radial-gradient(900px 600px at 10% 110%, #3a0c33 0%, transparent 55%),
     linear-gradient(180deg,var(--bleu-800) 0%, var(--bleu-900) 100%);
-  background-attachment:fixed;
-  min-height:100dvh;
-  overflow-x:hidden;
-  padding-bottom:env(safe-area-inset-bottom);
 }
 
 /* ── Décor de plateau ─────────────────────────────────────────── */
@@ -84,8 +90,10 @@ body{
   padding-bottom:.12em;
 }
 .logo-xl{font-size:clamp(44px,12vw,86px)}
-.logo-lg{font-size:clamp(38px,10vw,68px)}
-.logo-md{font-size:clamp(30px,8vw,46px);margin-bottom:18px}
+/* logo-lg et logo-md sont posés directement dans .wrap (pas dans un .center-stack) :
+   il leur faut display:block-level + marge auto pour se centrer. */
+.logo-lg{font-size:clamp(38px,10vw,68px);display:flex;margin:0 auto}
+.logo-md{font-size:clamp(30px,8vw,46px);display:flex;margin:0 auto 18px}
 
 .tagline{color:var(--gris);font-size:17px;max-width:34ch;margin:6px auto 0;line-height:1.45}
 .eyebrow{text-transform:uppercase;letter-spacing:.22em;font-size:12px;color:var(--or);font-weight:600}
@@ -163,6 +171,7 @@ body{
 .choice.is-on .choice-hint{color:#e8dcc0}
 
 /* ── Formulaires ──────────────────────────────────────────────── */
+#btnJoinConfirm{display:block;margin:8px auto 0}
 .field{display:block;margin-bottom:16px}
 .field-label{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--gris);margin-bottom:8px;font-weight:600}
 .input{
