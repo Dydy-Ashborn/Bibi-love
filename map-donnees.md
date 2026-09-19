@@ -109,9 +109,18 @@ soirées sans répétition, le tirage excluant les questions déjà jouées.
 endroit et au même moment que les autres — c'est ce qui compte pour l'organisateur, qui
 décide de la couleur de sa soirée en une seule fois. Conséquences :
 
-- aucune question de la banque n'est jouée ; `poolForSpice(5)` ne sert que de **repli**
-  pour un couple dont personne n'a écrit, et retombe sur le niveau **familial**, le seul
-  montrable à n'importe quelle table sans avoir été annoncé ;
+- **aucune question de la banque n'est jouée, jamais** — pas même en repli : personne
+  n'a rempli de questionnaire dans ce mode, une QCM de la banque s'afficherait « X n'a
+  rien rempli ». Une étape sans question écrite pour un couple est **sautée** par l'hôte
+  (`sauterEtape`). `poolForSpice(5)` ne sert plus qu'à remplir `questionIds` à la
+  création (le doc de partie en exige), ces ids ne sont pas joués ;
+- **c'est ce qui a été écrit qui dimensionne la partie, pas la durée** (`planPerso`) :
+  manche 1 = première moitié des questions de A, manche 2 = première moitié de B,
+  manche bonus = le reste en alternance, **pas de finale**. 4 joueurs × 12 = 48 questions
+  jouées. La durée choisie à la création n'a donc pas d'effet dans ce ton ;
+- *Bug corrigé* : la première version réutilisait le plan du mode mixte (questions perso
+  en fin de manches 1 et 2 seulement, plafonnées à `perRound − 1`). Une partie « 100 %
+  perso » en 1 h posait ~8 questions écrites par couple et comblait avec des QCM mortes ;
 - le lien ne propose **que** le composeur : faire remplir 19 questions qui ne seraient
   jamais jouées serait absurde (`estTonPerso()` masque la carte questionnaire du hub) ;
 - le sélecteur « Questions des couples » du salon disparaît : il n'y a rien à arbitrer,

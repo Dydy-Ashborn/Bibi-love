@@ -183,3 +183,21 @@ dans la diffusion avant la validation, le doc de partie étant lisible par tous.
 - Un couple à un seul joueur inscrit voit ses questions annulées faute de source.
 - Le chrono de la finale est sauvegardé au grain de la question, pas de la seconde : une
   reprise en plein milieu d'une question rend le temps restant du début de celle-ci.
+
+## Ton « Questions perso » : la partie est dimensionnée par ce qui a été écrit, sans finale
+
+Un couple qui écrit 12 questions chacun s'attend à les voir **toutes** jouées. Le cadre
+classique (durée → questions par manche, finale réservée au couple en tête) ne le permet
+pas : en 1 h, au mieux 37 questions sur 48, et les questions placées en finale sont
+perdues pour tous les couples non finalistes. D'où, dans ce ton seulement :
+
+- la taille des manches vient du nombre de questions écrites (max par place A/B), pas
+  de la durée ;
+- pas de finale : le couple en tête au terme de la manche bonus gagne ;
+- jamais de repli sur la banque, une étape sans question est sautée.
+
+Contrepartie assumée : la durée n'est plus garantie. 48 questions à réponse libre
+arbitrée tiennent à peu près dans l'heure (~1 min par question), 4 couples × 12 × 2 non.
+Si ça devient un problème, la bonne réponse est de plafonner le nombre de questions
+écrites par joueur selon le nombre de couples, pas de réintroduire des questions banque.
+

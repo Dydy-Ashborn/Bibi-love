@@ -50,6 +50,7 @@ export function drawQuestions({ spice, durationMin, exclude = [], poolFilter = n
  * Finale   : 7 questions, source = slot A, devineur = slot B.
  */
 export function buildPlan(questionIds, perRound, opts = {}) {
+  if (opts.toutPerso) return planPerso(questionIds, opts.compte || {});
   const perso = Math.max(0, Number(opts.perso) || 0);
   const plan = { rounds: [], final: [] };
   for (let r = 1; r <= 3; r++) {
@@ -63,10 +64,9 @@ export function buildPlan(questionIds, perRound, opts = {}) {
   plan.final = questionIds.slice(perRound * 3, perRound * 3 + RULES.FINAL_QUESTIONS)
     .map(qid => ({ qid, source: 'A' }));
 
-  // Questions personnalisées : elles remplacent les DERNIÈRES questions des manches 1
-  // et 2, dont la source est justement fixe (A puis B). On en laisse toujours au moins
-  // une standard par manche — une manche entièrement perso perdrait le rythme du jeu,
-  // et surtout le `qid` d'origine reste dans le step : il sert de repli pour un couple
+  // Mode mixte : les questions perso remplacent les DERNIÈRES questions des manches 1
+  // et 2, dont la source est fixe (A puis B). On en laisse au moins une standard par
+  // manche pour garder le rythme, et le `qid` d'origine sert de repli pour un couple
   // dont l'auteur n'a pas écrit assez de questions.
   if (perso > 0) {
     const k = Math.min(perso, Math.max(0, perRound - 1));
@@ -81,6 +81,37 @@ export function buildPlan(questionIds, perRound, opts = {}) {
     }
   }
   return plan;
+}
+
+/**
+ * Plan du ton « Questions perso » : c'est ce qui a été ÉCRIT qui dimensionne la partie,
+ * pas la durée. `compte` = plus grand nombre de questions écrites par place (A / B),
+ * tous couples confondus. Manche 1 = première moitié des questions de A, manche 2 =
+ * première moitié de B, manche bonus = le reste en alternance. Pas de finale : elle ne
+ * se joue que pour un couple, les questions qu'on y placerait seraient perdues pour
+ * les autres. Un couple qui a moins écrit voit ses tours en trop sautés par l'hôte.
+ * Chaque manche garde au moins une étape (une manche vide casserait le plateau).
+ */
+export function planPerso(questionIds, compte) {
+  const nA = Math.max(0, compte.A || 0), nB = Math.max(0, compte.B || 0);
+  const a1 = Math.ceil(nA / 2), b1 = Math.ceil(nB / 2);
+  const ids = questionIds.length ? questionIds : ['x'];
+  let i = 0;
+  const pas = (source, n, points) =>
+    ({ qid: ids[i++ % ids.length], source, points, custom: true, slot: source, n });
+  const P = RULES.POINTS_ROUND_1_2, X = RULES.POINTS_BONUS;
+
+  const r1 = [], r2 = [], r3 = [];
+  for (let n = 0; n < a1; n++) r1.push(pas('A', n, P));
+  for (let n = 0; n < b1; n++) r2.push(pas('B', n, P));
+  for (let a = a1, b = b1; a < nA || b < nB; ) {
+    if (a < nA) r3.push(pas('A', a++, X));
+    if (b < nB) r3.push(pas('B', b++, X));
+  }
+  [r1, r2, r3].forEach((r, k) => {
+    if (!r.length) r.push(pas(k === 1 ? 'B' : 'A', 999, k === 2 ? X : P));
+  });
+  return { rounds: [r1, r2, r3], final: [], sansFinale: true };
 }
 
 /** Nombre de questions perso réellement utilisables par auteur, pour une durée donnée. */

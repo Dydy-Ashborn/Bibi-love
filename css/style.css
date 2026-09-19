@@ -247,10 +247,16 @@ body::before{
 .slot{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:14px;padding:10px 12px;min-height:60px;
   width:100%;text-align:left;border:0;color:inherit;font:inherit;transition:background .15s,transform .1s}
 .slot.is-empty{opacity:.4;border:1.5px dashed rgba(255,255,255,.2);background:transparent}
-button.slot{cursor:pointer}
-button.slot:hover{background:rgba(255,255,255,.08)}
+button.slot{cursor:pointer;border:1px solid rgba(255,255,255,.1)}
+button.slot:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25)}
+button.slot:hover .slot-peek{background:var(--rouge-clair);color:#fff;border-color:transparent}
 button.slot:active{transform:scale(.98)}
-.slot-peek{margin-left:auto;color:var(--gris);font-size:12px;flex:0 0 auto}
+button.slot:focus-visible{outline:2px solid var(--or-clair);outline-offset:2px}
+.slot-txt{min-width:0;flex:1 1 auto}
+.slot-peek{margin-left:auto;flex:0 0 auto;font-size:11px;font-weight:800;letter-spacing:.03em;
+  color:var(--or-clair);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:4px 10px;
+  transition:background .15s,color .15s,border-color .15s}
+.lobby-hint{font-size:12px;color:var(--gris);margin:-4px 0 9px}
 .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;flex:0 0 auto;
   background:linear-gradient(180deg,var(--rouge-clair),var(--rouge-sombre));box-shadow:0 3px 10px rgba(255,31,69,.4)}
 .slot.is-empty .avatar{background:rgba(255,255,255,.12);box-shadow:none;color:var(--gris);font-size:14px}

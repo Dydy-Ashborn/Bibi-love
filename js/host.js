@@ -252,15 +252,19 @@ function renderLobby() {
                 : `${p.answered || 0}/${total} réponses`);
       // Cliquable : l'hôte est le seul à pouvoir lire les réponses (règles Firestore),
       // c'est donc le seul endroit où vérifier qu'un joueur a bien rempli — et quoi.
-      const carte = el('button', { class: 'slot' + (done ? ' is-done' : ''), type: 'button' },
+      const carte = el('button', { class: 'slot' + (done ? ' is-done' : ''), type: 'button',
+                                   title: 'Voir ce que ' + p.name + ' a rempli' },
         el('div', { class: 'avatar' }, initials(p.name)),
-        el('div', {}, el('div', { class: 'slot-name' }, p.name),
+        el('div', { class: 'slot-txt' }, el('div', { class: 'slot-name' }, p.name),
           el('div', { class: 'slot-state', html: etat })),
-        el('span', { class: 'slot-peek', html: iconHtml('circle-info') }));
+        el('span', { class: 'slot-peek' }, 'Voir'));
       carte.addEventListener('click', () => ouvrirFiche(p, c));
       slots.append(carte);
     });
-    box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
+    box.append(el('div', { class: 'lobby-couple' },
+      el('h3', {}, c.name),
+      el('p', { class: 'lobby-hint' }, 'Touche un prénom pour voir ses réponses'),
+      slots));
   });
 
   // Le repli étant décidé couple par couple (voir `resoudreQuestion`), on compte les
@@ -289,7 +293,7 @@ function renderLobby() {
   }
   $('#persoSummary').innerHTML = tonPerso
     ? (prets === 0
-        ? `<strong>Partie 100 % questions perso.</strong> ${ecrites} écrite(s), mais il en faut des <strong>deux côtés</strong> dans un couple. Sans ça, ils recevront des questions Bibi Love familiales.`
+        ? `<strong>Partie 100 % questions perso.</strong> ${ecrites} écrite(s), mais il en faut des <strong>deux côtés</strong> dans un couple. Sans ça, leurs tours seront sautés.`
         : `<strong>Partie 100 % questions perso</strong> · ${prets}/${g.couples.length} couple(s) prêt(s) · ${ecrites} question(s) écrite(s).`)
     : ecrites === 0
       ? "Personne n'a encore écrit de question. Le lien le leur propose à côté du questionnaire."
@@ -407,7 +411,11 @@ function canResume(g) {
 function resumeLabel(g) {
   const L = g.live;
   if (L.round === 'final') return `finale, question ${(L.final?.idx || 0) + 1}/${RULES.FINAL_QUESTIONS}`;
-  return `manche ${L.round}, question ${(L.qIdx || 0) + 1}/${g.perRound}`;
+  // En ton perso la longueur des manches dépend de ce qui a été écrit : elle n'est
+  // connue qu'une fois le plan chargé, on n'affiche donc pas de total ici.
+  return estTonPerso(g.spice)
+    ? `manche ${L.round}, question ${(L.qIdx || 0) + 1}`
+    : `manche ${L.round}, question ${(L.qIdx || 0) + 1}/${g.perRound}`;
 }
 
 $('.choice-grid[data-field="persoMode"]')?.addEventListener('click', e => {
@@ -437,7 +445,7 @@ $('#btnStartLive')?.addEventListener('click', () => {
   if (late.length) {
     showConfirmModal(
       estTonPerso(H.game.spice)
-        ? `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} écrit aucune question. Leur couple jouera des questions Bibi Love à la place. On lance quand même ?`
+        ? `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} écrit aucune question. Leurs tours seront sautés. On lance quand même ?`
         : `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} pas terminé. Leurs questions sans réponse seront perdues. On lance quand même ?`,
       go, { okLabel: 'Lancer la partie' });
   } else go();
@@ -536,12 +544,29 @@ function ecouteManettes() {
  * seule personne n'a rien écrit.
  */
 async function chargerPlan(g) {
-  if (estTonPerso(g.spice)) H.persoMode = 'mix';
+  const tonPerso = estTonPerso(g.spice);
+  if (tonPerso) H.persoMode = 'mix';
   H.customs = H.persoMode === 'mix' ? await allCustom(H.code, H.players) : {};
   const perso = H.persoMode === 'mix'
     ? Math.max(0, ...Object.values(H.customs).map(l => l.length))
     : 0;
-  H.plan = buildPlan(g.questionIds, g.perRound, { perso });
+  // Ton perso : la taille de la partie vient de ce qui a été écrit, place par place
+  // (le plus grand nombre de questions en A et en B, tous couples confondus). Le plan
+  // est recalculé à l'identique à chaque reprise : les `n` restent stables.
+  const compte = { A: 0, B: 0 };
+  if (tonPerso) {
+    H.players.forEach(p => {
+      if (p.slot !== 'A' && p.slot !== 'B') return;
+      compte[p.slot] = Math.max(compte[p.slot], (H.customs[p.uid] || []).length);
+    });
+  }
+  H.plan = buildPlan(g.questionIds, g.perRound, { perso, toutPerso: tonPerso, compte });
+}
+
+/** Nombre d'étapes de la manche en cours — fixe en jeu classique, variable en ton perso. */
+function tailleManche() {
+  const r = H.plan && H.plan.rounds[H.round - 1];
+  return r ? r.length : H.game.perRound;
 }
 
 /**
@@ -627,6 +652,36 @@ function resoudreQuestion(step, source) {
   };
 }
 
+/** Vrai si l'auteur de cette étape, dans ce couple, a une question perso à ce rang. */
+function aQuestionPerso(step, couple) {
+  if (!step || !step.custom || !couple) return false;
+  const n = names(couple);
+  const auteur = step.source === 'A' ? n.A : n.B;
+  const it = auteur ? (H.customs[auteur.uid] || [])[step.n] : null;
+  return !!(it && it.q && it.a);
+}
+
+/**
+ * Ton perso : étape sans question écrite pour ce couple. En manche on passe au tour
+ * suivant ; en finale on cherche la prochaine question du finaliste, et s'il n'en a
+ * plus, la finale s'arrête sur ce qui a été joué plutôt que sur des questions vides.
+ */
+function sauterEtape() {
+  if (H.round !== 'final') { advance(); return; }
+  const reste = H.plan.final.slice(H.final.idx + 1).some(st => aQuestionPerso(st, H.finalist));
+  if (!reste) {
+    // Plus rien à poser : le finaliste n'a pas échoué, il ne peut pas « perdre » une
+    // finale faute de questions — il gagne sur ce qui a été joué.
+    const joue = H.final.correct + H.final.errors;
+    endFinal(H.final.errors <= RULES.FINAL_MAX_ERRORS,
+      joue ? 'Toutes les questions perso ont été posées.'
+           : 'Pas de finale : toutes les questions perso ont déjà été jouées.');
+    return;
+  }
+  H.final.idx++;
+  renderLive();
+}
+
 function renderLive() {
   const g = H.game;
   const couple = currentCouple();
@@ -645,6 +700,10 @@ function renderLive() {
 
   const { q, truth, perso, kind, expected } = resoudreQuestion(step, source);
   const texte = kind === 'texte';
+
+  // Ton perso : jamais de QCM de la banque — personne n'a rempli de questionnaire dans
+  // ce mode, la question serait morte (« X n'a rien rempli »). On saute l'étape.
+  if (estTonPerso(g.spice) && !perso) { sauterEtape(); return; }
 
   $('#liveTurn').innerHTML = H.round === 'final'
     ? `<b>${guesserName}</b>, réponds vite : qu'a mis <b>${sourceName}</b> ?`
@@ -690,7 +749,7 @@ function renderLive() {
   $('#btnLiveNext').hidden = H.round === 'final' || texte;
   $('#btnLiveNext').innerHTML = 'Passer ' + iconHtml('arrow-right');
 
-  const totalQ = H.round === 'final' ? RULES.FINAL_QUESTIONS : g.perRound;
+  const totalQ = H.round === 'final' ? RULES.FINAL_QUESTIONS : tailleManche();
   const nowQ   = H.round === 'final' ? H.final.idx + 1 : H.qIdx + 1;
   $('#liveProgress').textContent = H.round === 'final'
     ? `Question ${nowQ}/${totalQ} · ${H.final.errors} erreur(s)`
@@ -889,13 +948,29 @@ function advance() {
   H.coupleIdx++;
   if (H.coupleIdx >= g.couples.length) {
     H.coupleIdx = 0; H.qIdx++;
-    if (H.qIdx >= g.perRound) {
+    if (H.qIdx >= tailleManche()) {
       H.qIdx = 0; H.round++;
-      if (H.round > 3) { startFinal(); return; }
+      if (H.round > 3) {
+        if (H.plan.sansFinale) { finirSansFinale(); return; }
+        startFinal(); return;
+      }
     }
   }
   renderLive();
   persistLive();
+}
+
+/**
+ * Ton perso : la partie s'arrête après la manche bonus, toutes les questions écrites
+ * ayant été jouées. Le couple en tête est sacré sans finale.
+ */
+function finirSansFinale() {
+  const g = H.game;
+  H.finalist = [...g.couples].sort((a, b) => (H.scores[b.id] || 0) - (H.scores[a.id] || 0))[0];
+  H.round = 'final';
+  H.final = { idx: 0, correct: 0, errors: 0, left: 0, over: false };
+  persistLive();
+  endFinal(true, 'Toutes vos questions ont été jouées.');
 }
 
 /* ── Finale chronométrée ──────────────────────────────────────── */
