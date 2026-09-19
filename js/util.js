@@ -112,8 +112,12 @@ function reveillerAudio() {
   if (c.state === 'suspended') c.resume().then(() => { audioPret = true; }).catch(() => {});
   else audioPret = true;
 }
-['pointerdown', 'touchstart', 'keydown'].forEach(evt =>
-  window.addEventListener(evt, reveillerAudio, { capture: true, passive: true }));
+// Garde `typeof window` : le module est aussi importé hors navigateur (scripts de
+// contrôle de la banque de questions), où un accès direct à `window` ferait tout planter.
+if (typeof window !== 'undefined') {
+  ['pointerdown', 'touchstart', 'keydown'].forEach(evt =>
+    window.addEventListener(evt, reveillerAudio, { capture: true, passive: true }));
+}
 
 function blip(freq, start, dur, type = 'sine', gain = 0.18) {
   const c = ctx();

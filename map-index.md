@@ -16,7 +16,7 @@ Aiguillage global. Aucun détail comportemental ici : voir les maps spécialisé
 | Plan gratuit / complet (point de contrôle unique) | `js/plan.js` | [map-monetisation](map-monetisation.md) | ⚠️ Stripe à brancher |
 | Écran « Mon compte » (uid + statut) | `js/app.js`, `#/compte` | [map-monetisation](map-monetisation.md) | ✅ v1 |
 | Accès Firestore + mémoire locale hôte | `js/store.js`, `js/firebase.js` | [map-donnees](map-donnees.md) | ✅ v2 |
-| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 377 questions · 5 tons (dont « Questions perso ») |
+| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 572 questions · 5 tons (dont « Questions perso ») |
 | Règles de sécurité | `firestore.rules` | [map-donnees](map-donnees.md) | ✅ v2 |
 
 ## Chantiers ouverts

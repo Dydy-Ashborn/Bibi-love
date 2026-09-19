@@ -93,8 +93,15 @@ Autres points :
 
 ## Banque de questions (js/data/questions.js)
 
-377 questions : 130 familial · 98 gênant · 79 intime · **70 sans filtre (18+)**, dont
-224 QCM sur soi et 153 « qui de vous deux ». De quoi enchaîner une bonne dizaine de
+572 questions : 180 familial · 156 gênant · 123 intime · **113 sans filtre (18+)**, dont
+355 QCM sur soi et 217 « qui de vous deux ».
+
+**Répartition par thème** (quotidien 124 · souvenirs 126 · goûts 126 · complicité 196).
+La banque penchait initialement très fort vers la complicité (189 contre 57 en souvenirs),
+et les tons intimes n'avaient quasiment que ça : une soirée « Intime » posait toujours les
+mêmes questions de couple, jamais de quotidien ni de souvenirs. L'écart est désormais
+contenu ; la complicité reste majoritaire, c'est le cœur du jeu, mais elle ne monopolise
+plus les tons élevés. De quoi enchaîner une bonne dizaine de
 soirées sans répétition, le tirage excluant les questions déjà jouées.
 
 **Le ton 5 « Questions perso » n'est pas un ton de contenu**, mais il se choisit au même

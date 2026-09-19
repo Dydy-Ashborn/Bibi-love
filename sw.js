@@ -9,7 +9,7 @@
  * Les polices et images, elles, restent en cache-first : leur nom ne change pas mais
  * leur contenu non plus.
  */
-const VERSION = 'v12';
+const VERSION = 'v13';
 const CACHE   = 'bibi-love-' + VERSION;
 
 const SHELL = [

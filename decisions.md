@@ -163,6 +163,13 @@ dans la diffusion avant la validation, le doc de partie étant lisible par tous.
 - **`!!valeur` sur un champ saisi à la main** : la console Firebase propose le type
   « chaîne » par défaut, et `"true"` passait pour vrai. Comparaison stricte obligatoire sur
   tout champ qu'un humain peut typer de travers.
+- **Ajouter du contenu sans regarder la répartition existante** : la banque avait dérivé
+  vers 189 questions de complicité contre 57 de souvenirs, et les tons Intime et Sans
+  filtre n'avaient presque que de la complicité. Toute extension part désormais du
+  tableau thème × ton, pas de l'inspiration du moment.
+- **Un module front importé par un script de contrôle** : `util.js` touchait `window` au
+  chargement (réveil de l'audio), ce qui faisait planter tous les scripts de vérification
+  de la banque lancés hors navigateur. Garde `typeof window !== 'undefined'`.
 - **Écrire un sous-objet et le réécrire juste après** : le broadcast de la manette était
   publié dans `live.bc`, puis `persistLive()` réécrivait `live` en entier et l'effaçait.
   Deux écritures qui se marchent dessus dans le même tour de rendu, sans erreur visible.
