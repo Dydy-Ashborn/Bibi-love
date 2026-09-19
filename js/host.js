@@ -3,7 +3,7 @@
 import { $, $$, el, icon, iconHtml, showScreen, toast, sfx, burst, shake, showConfirmModal, copy, initials } from './util.js';
 import { RULES } from './config.js';
 import {
-  byId, buildPlan, optionsFor, guessPrompt, isCorrect,
+  byId, buildPlan, optionsFor, guessPrompt, selfPrompt, isCorrect,
   ROUND_TITLES, roundSubtitle, questionCount, persoUtilisables
 } from './game.js';
 import { rankFor, podiumLine, pioche, REACT_GOOD, REACT_BAD, REACT_VIDE } from './data/verdicts.js';
@@ -250,10 +250,15 @@ function renderLobby() {
                  : 'Aucune question écrite')
         : (done ? iconHtml('circle-check') + ' Prêt'
                 : `${p.answered || 0}/${total} réponses`);
-      slots.append(el('div', { class: 'slot' + (done ? ' is-done' : '') },
+      // Cliquable : l'hôte est le seul à pouvoir lire les réponses (règles Firestore),
+      // c'est donc le seul endroit où vérifier qu'un joueur a bien rempli — et quoi.
+      const carte = el('button', { class: 'slot' + (done ? ' is-done' : ''), type: 'button' },
         el('div', { class: 'avatar' }, initials(p.name)),
         el('div', {}, el('div', { class: 'slot-name' }, p.name),
-          el('div', { class: 'slot-state', html: etat }))));
+          el('div', { class: 'slot-state', html: etat })),
+        el('span', { class: 'slot-peek', html: iconHtml('circle-info') }));
+      carte.addEventListener('click', () => ouvrirFiche(p, c));
+      slots.append(carte);
     });
     box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
   });
@@ -308,6 +313,90 @@ function renderLobby() {
                 : g.status === 'finished' ? iconHtml('rotate-right') + ' Relancer une partie'
                 : iconHtml('clapperboard') + ' Lancer la partie';
   btn.disabled = H.players.length < 2;
+}
+
+/* ── Fiche joueur : ce qu'il a rempli ─────────────────────────────────────
+ * L'hôte est le seul lecteur autorisé des réponses (firestore.rules) : sans cet
+ * écran, un « 12/22 » au salon ne dit ni lesquelles manquent ni ce qui a été
+ * répondu. Lecture à la demande, jamais en écoute permanente : ouvrir la fiche
+ * d'un joueur ne doit pas coûter une lecture Firestore à chaque frappe des autres.
+ */
+async function ouvrirFiche(p, couple) {
+  const g = H.game; if (!g) return;
+  const modal = $('#peekModal');
+  const body = $('#peekBody');
+  const tonPerso = estTonPerso(g.spice);
+
+  $('#peekTitle').textContent = p.name;
+  $('#peekSub').textContent = couple ? couple.name : '';
+  body.innerHTML = '';
+  body.append(el('p', { class: 'peek-empty' }, 'Chargement…'));
+  modal.classList.add('is-open');
+
+  const mate = H.players.find(o => o.coupleId === p.coupleId && o.uid !== p.uid) || null;
+
+  let items;
+  try {
+    items = tonPerso || H.persoMode === 'mix'
+      ? await ficheCustom(p, mate)
+      : null;
+    if (!tonPerso) {
+      const rep = await ficheReponses(p, mate);
+      items = items ? items.concat(rep) : rep;
+    }
+  } catch (e) {
+    body.innerHTML = '';
+    body.append(el('p', { class: 'peek-empty' },
+      "Impossible de lire les réponses. Les règles Firestore sont-elles déployées ?"));
+    return;
+  }
+
+  body.innerHTML = '';
+  if (!items.length) {
+    body.append(el('p', { class: 'peek-empty' },
+      p.name + " n'a encore rien rempli. Le lien de la partie lui propose le questionnaire."));
+    return;
+  }
+  const remplies = items.filter(it => it.a).length;
+  $('#peekSub').textContent =
+    (couple ? couple.name + ' · ' : '') + remplies + '/' + items.length + ' rempli(e)s';
+
+  items.forEach((it, n) => {
+    body.append(el('div', { class: 'peek-item' + (it.a ? '' : ' is-void') },
+      el('div', { class: 'peek-q' }, it.q),
+      el('div', { class: 'peek-a' },
+        el('span', { class: 'peek-n' }, String(n + 1)),
+        el('span', {}, it.a || 'Pas encore répondu'))));
+  });
+}
+
+/** Questions écrites par le joueur pour son/sa partenaire. */
+async function ficheCustom(p, mate) {
+  const map = await allCustom(H.code, [p]);
+  const pour = mate ? ' (pour ' + mate.name + ')' : '';
+  return (map[p.uid] || []).map(it => ({
+    q: (it.q || '') + pour,
+    a: it.a || ''
+  }));
+}
+
+/** Réponses du joueur au questionnaire tiré pour la partie. */
+async function ficheReponses(p, mate) {
+  const g = H.game;
+  const map = await allAnswers(H.code, [p]);
+  const mes = map[p.uid] || {};
+  const nom = { nameA: p.slot === 'A' ? p.name : (mate && mate.name),
+                nameB: p.slot === 'B' ? p.name : (mate && mate.name) };
+  return g.questionIds.map(qid => {
+    const q = byId(qid);
+    if (!q) return null;
+    const token = mes[qid];
+    const opt = optionsFor(q, nom, p.gender).find(o => o.token === token);
+    return {
+      q: selfPrompt(q, p.gender, mate && mate.gender),
+      a: opt ? opt.label : ''
+    };
+  }).filter(Boolean);
 }
 
 /** Une partie est reprenable si elle a été lancée et n'est pas terminée. */
@@ -930,6 +1019,11 @@ $('#paywallCancel')?.addEventListener('click', () => $('#paywall').classList.rem
 $('#paywall')?.addEventListener('click', e => {
   if (e.target === $('#paywall')) $('#paywall').classList.remove('is-open');
 });
+
+/* ══════════════ FICHE JOUEUR ══════════════ */
+const fermerFiche = () => $('#peekModal')?.classList.remove('is-open');
+$('#peekClose')?.addEventListener('click', fermerFiche);
+$('#peekModal')?.addEventListener('click', e => { if (e.target === $('#peekModal')) fermerFiche(); });
 
 /* ══════════════ HISTORIQUE ══════════════ */
 export function renderHistory() {

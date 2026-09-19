@@ -93,10 +93,11 @@ Autres points :
 
 ## Banque de questions (js/data/questions.js)
 
-572 questions : 180 familial · 156 gênant · 123 intime · **113 sans filtre (18+)**, dont
-355 QCM sur soi et 217 « qui de vous deux ».
+629 questions : 180 familial · 156 gênant · 123 intime · **170 sans filtre (18+)**.
 
-**Répartition par thème** (quotidien 124 · souvenirs 126 · goûts 126 · complicité 196).
+**Répartition par thème du niveau 4** (complicité 86 · goûts 31 · souvenirs 27 · quotidien 26).
+Le niveau 4 étant cloisonné, c'est sa taille propre qui compte : 170 questions = 7 à 10
+soirées en 45/60 min avant répétition, contre 5 auparavant — la raison de l'ajout.
 La banque penchait initialement très fort vers la complicité (189 contre 57 en souvenirs),
 et les tons intimes n'avaient quasiment que ça : une soirée « Intime » posait toujours les
 mêmes questions de couple, jamais de quotidien ni de souvenirs. L'écart est désormais
@@ -156,3 +157,10 @@ affichés sont dans `SPICE`, à modifier là et nulle part ailleurs).
 Pour ajouter des questions : respecter le préfixe d'id (`s`/`w` + niveau + numéro), ne
 jamais réutiliser un id existant (les parties en cours référencent les ids), et garder
 exactement 4 options pour une `self`.
+
+*Piège rencontré* : une virgule en trop entre deux entrées (`},,`) crée un **trou** dans le
+tableau — un `undefined` que `QUESTIONS.length` compte mais que `.filter(q => !q)` ne voit
+pas (`filter` saute les trous). Le tirage renvoie alors un id fantôme et `byId()` plante en
+pleine partie. La vérification qui l'attrape est une boucle indexée
+(`for (let n = 0; n < QUESTIONS.length; n++) if (QUESTIONS[n] === undefined)`), pas un
+`filter`.

@@ -216,6 +216,28 @@ qui arbitre à l'écran.
 - La limite (3 gratuit / 12 complet) vient de `game.maxCustom`, figé à la création depuis
   le plan de l'**hôte**. La lire sur l'appareil de l'invité donnerait la limite gratuite à
   tout le monde alors que l'organisateur a payé pour la table — bug trouvé au banc de test.
+### Fiche joueur au salon (`ouvrirFiche`)
+
+Chaque place du salon est un **bouton** : le clic ouvre `#peekModal` et affiche, question
+par question, ce que le joueur a rempli. Ça répond à la seule question que l'hôte se pose
+vraiment avant de lancer — « 5/19, mais lesquelles ? » — et permet de vérifier qu'un
+questionnaire n'a pas été bâclé.
+
+- **L'hôte est le seul lecteur autorisé** (`firestore.rules`) : c'est structurellement le
+  seul écran de l'app où ce contenu peut s'afficher. Un joueur qui ouvrirait la même vue
+  n'obtiendrait rien.
+- **Lecture à la demande**, jamais en écoute permanente : ouvrir une fiche ne doit pas
+  coûter une lecture Firestore à chaque frappe des autres joueurs. `allCustom`/`allAnswers`
+  sont appelés avec **le seul joueur concerné**, pas toute la table.
+- Les réponses passent par `optionsFor()` + `selfPrompt()`, donc s'affichent **exactement
+  comme le joueur les a vues**, accords en genre compris. Réafficher l'option brute
+  (`q.o[token]`) montrerait « gêné(e) » là où le joueur a lu « gênée ».
+- Le mode décide de ce qu'on montre : en ton perso ce sont les questions écrites (avec le
+  prénom du destinataire), sinon le questionnaire tiré. Les deux se cumulent si l'hôte a
+  activé le mix.
+- Une question sans réponse reste **listée** en grisé plutôt que masquée : c'est
+  précisément ce que l'hôte cherche à repérer.
+
 - `js/data/idees.js` — boîte à idées. Ce sont des **amorces**, pas des questions toutes
   faites : elles servent à débloquer quelqu'un devant une page blanche. `tirerIdees(3)`
   en tire trois sans doublon, le bouton en retire d'autres.

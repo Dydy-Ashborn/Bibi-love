@@ -244,8 +244,13 @@ body::before{
 .lobby-couple{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:16px}
 .lobby-couple h3{font-size:17px;font-weight:800;margin-bottom:10px;color:var(--or-clair)}
 .lobby-slots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.slot{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:14px;padding:10px 12px;min-height:60px}
+.slot{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.25);border-radius:14px;padding:10px 12px;min-height:60px;
+  width:100%;text-align:left;border:0;color:inherit;font:inherit;transition:background .15s,transform .1s}
 .slot.is-empty{opacity:.4;border:1.5px dashed rgba(255,255,255,.2);background:transparent}
+button.slot{cursor:pointer}
+button.slot:hover{background:rgba(255,255,255,.08)}
+button.slot:active{transform:scale(.98)}
+.slot-peek{margin-left:auto;color:var(--gris);font-size:12px;flex:0 0 auto}
 .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;flex:0 0 auto;
   background:linear-gradient(180deg,var(--rouge-clair),var(--rouge-sombre));box-shadow:0 3px 10px rgba(255,31,69,.4)}
 .slot.is-empty .avatar{background:rgba(255,255,255,.12);box-shadow:none;color:var(--gris);font-size:14px}
@@ -356,6 +361,18 @@ body::before{
   border-radius:22px;padding:26px;max-width:420px;width:100%;box-shadow:var(--ombre)}
 .modal-text{font-size:17px;line-height:1.5;margin-bottom:22px}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.modal-box-wide{max-width:620px;max-height:82dvh;display:flex;flex-direction:column;padding:22px}
+.peek-head{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.peek-head h3{font-size:19px;font-weight:800;color:var(--or-clair)}
+.peek-sub{font-size:13px;color:var(--gris);margin:4px 0 14px}
+.peek-body{overflow-y:auto;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}
+.peek-item{background:rgba(0,0,0,.28);border-radius:14px;padding:11px 13px}
+.peek-item.is-void{opacity:.45}
+.peek-q{font-size:14px;line-height:1.35;margin-bottom:6px}
+.peek-a{font-size:14px;font-weight:700;color:var(--vert);display:flex;gap:7px;align-items:baseline}
+.peek-item.is-void .peek-a{color:var(--gris);font-weight:600;font-style:italic}
+.peek-n{font-size:11px;color:var(--gris);font-weight:800;flex:0 0 auto}
+.peek-empty{text-align:center;color:var(--gris);font-size:14px;padding:22px 6px;line-height:1.5}
 
 /* ── Toast ────────────────────────────────────────────────────── */
 /* Au repos le toast doit être RÉELLEMENT absent : `translate(…,140%)` seul laissait

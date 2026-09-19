@@ -7,7 +7,7 @@ Aiguillage global. Aucun détail comportemental ici : voir les maps spécialisé
 | Coque PWA, routeur, boot | `index.html`, `js/app.js`, `sw.js`, `manifest.webmanifest` | [map-front](map-front.md) | ✅ v2 |
 | Direction artistique | `css/style.css`, `icons/` | [map-front](map-front.md) | ✅ v1 |
 | Iconographie (Font Awesome vendorisé) | `vendor/fontawesome/` | [map-front](map-front.md) | ✅ 46 icônes, 5,5 ko |
-| Parcours hôte (création → plateau → podium) | `js/host.js` | [map-front](map-front.md) | ✅ v2 |
+| Parcours hôte (création → plateau → podium) | `js/host.js` | [map-front](map-front.md) | ✅ v3 (fiche joueur au salon) |
 | Parcours joueur (rejoindre → questionnaire → manette) | `js/player.js` | [map-front](map-front.md) | ✅ v2 |
 | Manette téléphone (contrat de diffusion) | `js/live.js` | [map-front](map-front.md) | ✅ v1 |
 | Logique de jeu pure + accords en genre | `js/game.js`, `js/config.js` | [map-front](map-front.md) | ✅ v2 |
@@ -16,7 +16,7 @@ Aiguillage global. Aucun détail comportemental ici : voir les maps spécialisé
 | Plan gratuit / complet (point de contrôle unique) | `js/plan.js` | [map-monetisation](map-monetisation.md) | ⚠️ Stripe à brancher |
 | Écran « Mon compte » (uid + statut) | `js/app.js`, `#/compte` | [map-monetisation](map-monetisation.md) | ✅ v1 |
 | Accès Firestore + mémoire locale hôte | `js/store.js`, `js/firebase.js` | [map-donnees](map-donnees.md) | ✅ v2 |
-| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 572 questions · 5 tons (dont « Questions perso ») |
+| Banque de questions | `js/data/questions.js` | [map-donnees](map-donnees.md) | ✅ 629 questions · 5 tons (dont « Questions perso ») |
 | Règles de sécurité | `firestore.rules` | [map-donnees](map-donnees.md) | ✅ v2 |
 
 ## Chantiers ouverts
