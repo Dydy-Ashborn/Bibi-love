@@ -27,7 +27,15 @@ export async function enterJoin(code) {
 
   leavePlayer();
   state.unsub = watchPlayers(code, list => { state.players = list; renderJoin(); refreshQuizOptions(); });
-  state.unsubGame = watchGame(code, g => { if (g) { state.game = g; onGameUpdate(g); } });
+  state.unsubGame = watchGame(code, g => {
+    if (!g) return;
+    state.game = g;
+    // L'hôte peut ouvrir une place de couple pendant qu'un invité a l'écran ouvert :
+    // sans ce re-rendu, la liste reste figée sur celle chargée à l'arrivée et l'invité
+    // voit « complet » indéfiniment sur une partie qui a pourtant de la place.
+    if ($('#screen-join').classList.contains('is-active')) renderJoin();
+    onGameUpdate(g);
+  });
 
   state.me = await myPlayer(code);
   state.answers = await myAnswers(code);
@@ -79,8 +87,29 @@ function renderJoin() {
     });
     box.append(btn);
   });
-  if (!state.pickedCouple && g.couples.length === 1) state.pickedCouple = g.couples[0].id;
+  // Un couple mémorisé qui s'est rempli entre-temps doit être relâché, sinon le joueur
+  // reste coincé sur une sélection devenue impossible pendant que les autres passent.
+  const plein = id => state.players.filter(p => p.coupleId === id).length >= 2;
+  if (state.pickedCouple && plein(state.pickedCouple)) state.pickedCouple = null;
+  if (!state.pickedCouple) {
+    const libre = g.couples.find(c => !plein(c.id));
+    if (libre && g.couples.filter(c => !plein(c.id)).length === 1) state.pickedCouple = libre.id;
+  }
   if (state.pickedCouple) $$('.choice', box).forEach(b => b.classList.toggle('is-on', b.dataset.value === state.pickedCouple));
+
+  // Toutes les places prises : dire quoi faire, pas juste afficher « Complet ».
+  // L'invité n'a aucun moyen de deviner que l'hôte peut ouvrir une place de plus.
+  const libres = g.couples.filter(c => state.players.filter(p => p.coupleId === c.id).length < 2).length;
+  let avis = $('#joinFull');
+  if (!avis) {
+    avis = el('p', { class: 'join-full', id: 'joinFull' });
+    $('#joinCouples').after(avis);
+  }
+  avis.hidden = libres > 0;
+  avis.innerHTML = iconHtml('circle-info') +
+    " Tous les couples sont complets. Demande à l'organisateur d'ouvrir une place " +
+    "depuis son salon d'attente — le lien restera le même.";
+  $('#btnJoinConfirm').disabled = libres === 0;
 }
 
 $('#joinGender')?.addEventListener('click', e => {

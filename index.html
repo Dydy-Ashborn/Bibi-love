@@ -73,27 +73,14 @@
 
     <div class="card">
       <h2 class="card-title">Mon identifiant</h2>
-      <p class="card-sub">C'est lui qui porte ton achat. Il est propre à ce navigateur : le
-        noter quelque part évite de le perdre.</p>
+      <p class="card-sub">C'est lui qui porte ton achat. Il est propre à ce navigateur :
+        garde-le si tu dois nous écrire au sujet d'un achat.</p>
       <div class="link-box"><span id="compteUid" class="link-text mono">—</span></div>
       <div class="row-btns">
         <button id="btnCompteCopy" class="btn btn-primary"><i class="fa fa-copy"></i> Copier l'identifiant</button>
       </div>
     </div>
 
-    <div class="card">
-      <h2 class="card-title">Débloquer sans payer</h2>
-      <p class="card-sub">Réservé au propriétaire du projet Firebase. Dans la console
-        Firebase → Firestore → <strong>Démarrer une collection</strong> :</p>
-      <ol class="steps">
-        <li>ID de la collection : <code>hosts</code></li>
-        <li>ID du document : <strong>colle ton identifiant ci-dessus</strong></li>
-        <li>Champ <code>premium</code>, type <em>booléen</em>, valeur <code>true</code></li>
-        <li>Reviens ici et touche « Vérifier mon statut »</li>
-      </ol>
-      <p class="card-sub">Les règles de sécurité interdisent d'écrire ce document depuis
-        l'app : c'est ce qui empêche n'importe qui de se déclarer premium tout seul.</p>
-    </div>
   </div>
 </section>
 
@@ -112,13 +99,14 @@
         <div class="choice-grid" data-field="mode">
           <button class="choice is-on" data-value="duo">
             <span class="choice-emoji"><i class="fa fa-user-group"></i></span><span class="choice-label">Duo</span>
-            <span class="choice-hint">Un seul couple contre le jeu</span>
+            <span class="choice-hint"><strong>Un seul couple.</strong> Vous deux contre le jeu, personne d'autre ne peut rejoindre.</span>
           </button>
           <button class="choice" data-value="tournoi">
             <span class="choice-emoji"><i class="fa fa-trophy"></i></span><span class="choice-label">Tournoi</span>
-            <span class="choice-hint">2 à 4 couples s'affrontent</span>
+            <span class="choice-hint"><strong>Plusieurs couples.</strong> Invite d'autres couples avec le même lien.</span>
           </button>
         </div>
+        <p id="modeNote" class="mode-note" hidden></p>
       </div>
 
       <div class="card" id="cardCouples">
@@ -253,6 +241,9 @@
     </div>
 
     <div id="lobbyCouples" class="lobby-couples"></div>
+    <button id="btnLobbyAddCouple" class="btn btn-ghost btn-sm" hidden>
+      <i class="fa fa-plus"></i> Ajouter un couple à cette partie
+    </button>
     <div class="row-btns row-btns-sticky">
       <button id="btnStartLive" class="btn btn-primary btn-xl"><i class="fa fa-clapperboard"></i> Lancer la partie</button>
       <button id="btnDeleteGame" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i> Supprimer la partie</button>

@@ -2,9 +2,10 @@
 import { $, iconHtml, showScreen, toast, sfx, toggleMute, isMuted } from './util.js';
 import { ready } from './firebase.js';
 import { enterCreate, enterLobby, renderHistory, leaveHost, openPaywall } from './host.js';
-import { refreshPremium, isPremium, diagPremium, resume as planResume, PRIX, LIEN_PAIEMENT } from './plan.js';
+import { refreshPremium, isPremium, diagPremium, resume as planResume,
+         PRIX, LIEN_PAIEMENT, urlPaiement, attendrePaiement } from './plan.js';
 import { uid } from './firebase.js';
-import { copy } from './util.js';
+import { copy, burst } from './util.js';
 import { enterJoin, leavePlayer } from './player.js';
 
 /* ── Routes ───────────────────────────────────────────────────────
@@ -90,27 +91,72 @@ $('#btnCompteCopy')?.addEventListener('click', async () => {
 
 /* ── Paywall : achat et restauration ─────────────────────────────────────── */
 $('#paywallPrice') && ($('#paywallPrice').textContent = PRIX);
+if (!LIEN_PAIEMENT && $('#paywallBuy')) {
+  $('#paywallBuy').disabled = true;
+  $('#paywallBuy').textContent = 'Bientôt disponible';
+}
 
 $('#paywallBuy')?.addEventListener('click', () => {
-  if (!LIEN_PAIEMENT) {
-    toast("Le lien de paiement n'est pas encore configuré.", 'err');
+  const url = urlPaiement();
+  if (!url) {
+    toast("Le paiement n'est pas encore ouvert. Reviens bientôt !", 'err');
     return;
   }
-  // On repasse par l'app au retour : le webhook Stripe a écrit hosts/{uid}.premium,
-  // `refreshPremium()` au démarrage suivant le relit.
-  location.href = LIEN_PAIEMENT;
+  // On marque le départ vers Stripe : au retour, `verifierRetourPaiement()` saura
+  // qu'il faut attendre le webhook au lieu d'afficher froidement « version gratuite ».
+  try { sessionStorage.setItem('bibi.achat', '1'); } catch {}
+  location.href = url;
 });
+
+/**
+ * Retour depuis Stripe. Le webhook peut mettre quelques secondes à écrire
+ * `hosts/{uid}` : on patiente avec un message clair plutôt que d'annoncer un échec
+ * à quelqu'un qui vient de payer.
+ */
+async function verifierRetourPaiement() {
+  let attendu = false;
+  try { attendu = sessionStorage.getItem('bibi.achat') === '1'; } catch {}
+  const retour = location.hash.includes('paiement=ok');
+  if (!attendu && !retour) return;
+  try { sessionStorage.removeItem('bibi.achat'); } catch {}
+
+  if (isPremium()) return;
+  toast('Validation de ton achat…', 'info');
+  const ok = await attendrePaiement();
+  if (ok) {
+    $('#paywall')?.classList.remove('is-open');
+    toast('Version complète débloquée. Merci !', 'ok');
+    burst('confetti', 90);
+    route();
+  } else {
+    toast("Paiement non confirmé pour l'instant. Touche « Vérifier mon statut » dans Mon compte d'ici une minute.", 'err');
+  }
+}
 
 $('#paywallRestore')?.addEventListener('click', async () => {
   const ok = await refreshPremium();
-  toast(ok ? 'Version complète débloquée.' : "Aucun achat trouvé sur ce compte.", ok ? 'ok' : 'err');
+  toast(ok ? 'Version complète débloquée.' : "Aucun achat trouvé sur cet appareil.", ok ? 'ok' : 'err');
   if (ok) { $('#paywall').classList.remove('is-open'); route(); }
 });
 
+/* Bouton son. Un clic accidentel coupait le son de façon permanente sans que rien
+   ne l'annonce : l'icône barrée est discrète et l'état survit aux rechargements.
+   On confirme désormais chaque bascule par un toast, et le titre nomme l'action. */
 const muteBtn = $('#btnMute');
 const muteIcon = on => iconHtml(on ? 'volume-high' : 'volume-xmark');
-muteBtn.innerHTML = muteIcon(!isMuted());
-muteBtn.addEventListener('click', () => { muteBtn.innerHTML = muteIcon(toggleMute()); });
+function majMute(actif) {
+  muteBtn.innerHTML = muteIcon(actif);
+  muteBtn.classList.toggle('is-muted', !actif);
+  muteBtn.title = actif ? 'Couper le son' : 'Réactiver le son';
+  muteBtn.setAttribute('aria-label', muteBtn.title);
+}
+majMute(!isMuted());
+muteBtn.addEventListener('click', () => {
+  const actif = toggleMute();
+  majMute(actif);
+  toast(actif ? 'Son réactivé' : 'Son coupé', actif ? 'ok' : 'info');
+  if (actif) sfx.good();
+});
 
 /* Raccourcis clavier pour l'animateur : A/B/C/D pour répondre, Espace pour avancer. */
 document.addEventListener('keydown', e => {
@@ -132,7 +178,7 @@ document.addEventListener('keydown', e => {
       "Connexion à Firebase impossible. Vérifie que l'authentification anonyme est activée.";
     return;
   }
-  refreshPremium();                       // non bloquant : l'interface s'ouvre sans attendre
+  refreshPremium().then(verifierRetourPaiement);   // non bloquant : l'interface s'ouvre sans attendre
   const wait = Math.max(0, 900 - (Date.now() - t0));
   setTimeout(route, wait);
 })();

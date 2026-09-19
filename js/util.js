@@ -74,7 +74,12 @@ export function toast(msg, kind = 'info') {
   t.dataset.kind = kind;
   t.classList.add('is-open');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('is-open'), 2600);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('is-open');
+    // On vide après l'animation de sortie : un toast sans texte ne doit plus occuper
+    // le bas de l'écran, même replié.
+    setTimeout(() => { if (!t.classList.contains('is-open')) t.textContent = ''; }, 350);
+  }, 2600);
 }
 
 /* ── Sons synthétisés (aucun fichier audio à héberger) ──────────────────── */
@@ -87,13 +92,34 @@ export function toggleMute() {
 }
 export function isMuted() { return localStorage.getItem('bibi.mute') === '1'; }
 
+/**
+ * Les navigateurs créent tout AudioContext à l'état `suspended` tant que
+ * l'utilisateur n'a pas interagi avec la page. `resume()` étant ASYNCHRONE, planifier
+ * un son juste après l'appel le programmait sur un contexte encore endormi : plus
+ * aucun effet sonore ne sortait, alors que le son était bien activé.
+ *
+ * On débloque donc le contexte une fois pour toutes au premier geste réel de
+ * l'utilisateur, avant qu'un son ne soit demandé.
+ */
 function ctx() {
   if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-  if (actx.state === 'suspended') actx.resume();
   return actx;
 }
+
+let audioPret = false;
+function reveillerAudio() {
+  const c = ctx();
+  if (c.state === 'suspended') c.resume().then(() => { audioPret = true; }).catch(() => {});
+  else audioPret = true;
+}
+['pointerdown', 'touchstart', 'keydown'].forEach(evt =>
+  window.addEventListener(evt, reveillerAudio, { capture: true, passive: true }));
+
 function blip(freq, start, dur, type = 'sine', gain = 0.18) {
   const c = ctx();
+  // Contexte encore endormi : on le réveille et on abandonne CE son plutôt que de
+  // le programmer dans le vide. Le suivant passera.
+  if (c.state !== 'running') { reveillerAudio(); if (!audioPret) return; }
   const o = c.createOscillator();
   const g = c.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, c.currentTime + start);

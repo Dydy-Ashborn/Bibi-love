@@ -76,6 +76,16 @@ function syncCreateUI() {
   $('#adultNote').hidden = cfg.spice !== 4;
   $('#persoNote').hidden = !estTonPerso(cfg.spice);
 
+  // Le format fige le nombre de places dans la partie. Ne pas le dire ici, c'est
+  // laisser l'hôte envoyer un lien Duo à quatre amis qui ne pourront jamais rejoindre.
+  const note = $('#modeNote');
+  note.hidden = false;
+  note.innerHTML = cfg.mode === 'duo'
+    ? iconHtml('circle-info') + "Le lien n'acceptera que <strong>deux joueurs</strong>. " +
+      "Pour inviter d'autres couples, choisis Tournoi."
+    : iconHtml('circle-info') + `Le lien ouvrira <strong>${cfg.couples.length} places de couple</strong> ` +
+      `(${cfg.couples.length * 2} joueurs). Tu pourras encore en ajouter depuis le salon.`;
+
   // Cadenas sur les options payantes : elles restent visibles et cliquables — c'est
   // le clic qui ouvre l'offre. Une option grisée ne donne envie de rien.
   $$('.choice-grid[data-field="spice"] .choice').forEach(b =>
@@ -216,6 +226,11 @@ function renderLobby() {
   box.innerHTML = '';
   let ready = 0, expected = g.couples.length * 2;
 
+  // Le mode détermine CE QU'ON COMPTE : en ton perso il n'y a aucun questionnaire,
+  // afficher « 0/22 réponses » annonce une tâche qui n'existe pas et fait croire que
+  // rien n'a été enregistré alors que les questions sont bien là.
+  const tonPerso = estTonPerso(g.spice);
+
   g.couples.forEach(c => {
     const { A, B } = coupleOf(c);
     const slots = el('div', { class: 'lobby-slots' });
@@ -227,13 +242,18 @@ function renderLobby() {
                         el('div', { class: 'slot-state' }, 'Place ' + slot))));
         return;
       }
-      const done = (p.answered || 0) >= total;
+      const ecrit = p.customCount || 0;
+      const done = tonPerso ? ecrit > 0 : (p.answered || 0) >= total;
       if (done) ready++;
+      const etat = tonPerso
+        ? (ecrit ? iconHtml('circle-check') + ` ${ecrit} question${ecrit > 1 ? 's' : ''}`
+                 : 'Aucune question écrite')
+        : (done ? iconHtml('circle-check') + ' Prêt'
+                : `${p.answered || 0}/${total} réponses`);
       slots.append(el('div', { class: 'slot' + (done ? ' is-done' : '') },
         el('div', { class: 'avatar' }, initials(p.name)),
         el('div', {}, el('div', { class: 'slot-name' }, p.name),
-          el('div', { class: 'slot-state', html: done ? iconHtml('circle-check') + ' Prêt'
-                                                      : `${p.answered || 0}/${total} réponses` }))));
+          el('div', { class: 'slot-state', html: etat }))));
     });
     box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
   });
@@ -252,7 +272,6 @@ function renderLobby() {
   // En ton « Questions perso », il n'y a rien à choisir : la partie EST la partie perso.
   // Le sélecteur disparaît, sinon l'hôte croit pouvoir revenir en arrière alors que
   // personne n'a rempli de questionnaire.
-  const tonPerso = estTonPerso(g.spice);
   $('.choice-grid[data-field="persoMode"]').hidden = tonPerso;
   if (tonPerso) H.persoMode = 'mix';
 
@@ -274,11 +293,14 @@ function renderLobby() {
         : `<strong>${prets}/${g.couples.length}</strong> couple(s) prêt(s) · <strong>${ecrites}</strong> question(s) écrite(s). ` +
           `Jusqu'à <strong>${utilisables} par personne</strong> en manches 1 et 2 ; les couples qui n'en ont pas écrit reçoivent des questions Bibi Love.`;
 
+  const btnAdd = $('#btnLobbyAddCouple');
+  btnAdd.hidden = g.status !== 'lobby' || g.couples.length >= RULES.MAX_COUPLES;
+
   const resumable = canResume(g);
   $('#lobbyStatus').innerHTML = resumable
     ? `Partie en cours — <strong>${resumeLabel(g)}</strong>. Les scores ont été sauvegardés, tu reprends exactement où tu t'es arrêté.`
     : tonPerso
-      ? `<strong>${prets * 2}/${expected}</strong> joueurs ont écrit leurs questions. Aucun questionnaire à remplir dans ce mode.`
+      ? `<strong>${ready}/${expected}</strong> joueurs ont écrit leurs questions. Aucun questionnaire à remplir dans ce mode.`
       : `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
         `les réponses manquantes compteront comme fausses.`;
   const btn = $('#btnStartLive');
@@ -330,6 +352,29 @@ $('#btnStartLive')?.addEventListener('click', () => {
         : `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} pas terminé. Leurs questions sans réponse seront perdues. On lance quand même ?`,
       go, { okLabel: 'Lancer la partie' });
   } else go();
+});
+
+/**
+ * Ajoute une place de couple à une partie DÉJÀ créée.
+ * Sans ça, un hôte qui a sous-estimé le nombre d'invités doit tout recréer et
+ * renvoyer un nouveau lien — en perdant les questionnaires déjà remplis.
+ */
+$('#btnLobbyAddCouple')?.addEventListener('click', async () => {
+  const g = H.game;
+  if (!g || g.couples.length >= RULES.MAX_COUPLES) return;
+  const verdict = guard('couples', g.couples.length + 1);
+  if (!verdict.ok) { openPaywall(verdict.why); return; }
+
+  const couples = g.couples.concat([{
+    id: 'c' + (g.couples.length + 1),
+    name: 'Couple ' + (g.couples.length + 1),
+    score: 0, nameA: '', nameB: ''
+  }]);
+  try {
+    await patchGame(H.code, { couples, mode: 'tournoi' });
+    sfx.good();
+    toast('Une place de couple ajoutée. Le lien reste le même.', 'ok');
+  } catch { toast("Ajout impossible, vérifie ta connexion.", 'err'); }
 });
 
 $('#btnDeleteGame')?.addEventListener('click', () => {

@@ -14,8 +14,31 @@ import { db, uid } from './firebase.js';
 
 export const PRIX = '4,99 €';
 
-/** URL Stripe Payment Link. À renseigner au déploiement. */
-export const LIEN_PAIEMENT = '';
+/**
+ * Stripe Payment Link, en mode `payment` (achat unique, jamais `subscription`).
+ * À créer dans le Dashboard Stripe puis coller ici — rien d'autre à configurer côté app.
+ * Laisser vide désactive proprement le bouton d'achat plutôt que d'ouvrir une page morte.
+ */
+export const LIEN_PAIEMENT = 'https://buy.stripe.com/cNi9ATb34ePB99Yb078so00';
+
+/**
+ * Construit l'URL de paiement en y attachant l'identité de l'acheteur.
+ *
+ * `client_reference_id` est LE point qui fait tenir tout le système : Stripe le renvoie
+ * tel quel dans le webhook `checkout.session.completed`, et c'est la seule chose qui
+ * relie un paiement à un `hosts/{uid}`. Sans lui, l'argent arrive sans qu'on sache
+ * qui débloquer.
+ *
+ * Stripe impose des caractères alphanumériques : les uid Firebase le sont déjà, mais
+ * on filtre par sécurité — un identifiant refusé ferait échouer le paiement entier.
+ */
+export function urlPaiement() {
+  if (!LIEN_PAIEMENT) return '';
+  const ref = String(uid() || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!ref) return '';
+  const sep = LIEN_PAIEMENT.includes('?') ? '&' : '?';
+  return `${LIEN_PAIEMENT}${sep}client_reference_id=${encodeURIComponent(ref)}`;
+}
 
 export const GRATUIT = {
   spices: [1, 2],            // Familial et Gênant seulement
@@ -75,10 +98,18 @@ export async function refreshPremium() {
   return cache;
 }
 
-/** Débloquage local (retour de paiement, ou déblocage manuel pendant les tests). */
-export function setPremiumLocal(on) {
-  cache = !!on;
-  localStorage.setItem(LS, cache ? '1' : '0');
+/**
+ * Au retour de Stripe, le webhook n'a pas forcément encore écrit `hosts/{uid}` :
+ * quelques secondes peuvent s'écouler. On réessaie plutôt que d'annoncer un échec
+ * à quelqu'un qui vient de payer — c'est le pire moment pour afficher « version
+ * gratuite ».
+ */
+export async function attendrePaiement({ essais = 6, delai = 2000 } = {}) {
+  for (let i = 0; i < essais; i++) {
+    if (await refreshPremium()) return true;
+    if (i < essais - 1) await new Promise(r => setTimeout(r, delai));
+  }
+  return false;
 }
 
 /**
