@@ -36,6 +36,29 @@ service cloud.firestore {
         allow read:  if signedIn() && (request.auth.uid == playerId || isHost(gameId));
         allow write: if signedIn() && request.auth.uid == playerId;
       }
+
+      // Questions personnalisées : mêmes droits que les réponses. Le/la partenaire
+      // ne doit surtout pas pouvoir les lire avant la soirée — c'est tout l'intérêt.
+      match /custom/{playerId} {
+        allow read:  if signedIn() && (request.auth.uid == playerId || isHost(gameId));
+        allow write: if signedIn() && request.auth.uid == playerId;
+      }
+
+      // Manette : chaque joueur n'écrit que son propre choix. La lecture est ouverte
+      // aux joueurs de la partie — un choix n'a aucune valeur secrète, il est révélé
+      // à l'écran dans la seconde qui suit.
+      match /guesses/{playerId} {
+        allow read:  if signedIn();
+        allow write: if signedIn() && request.auth.uid == playerId;
+      }
+    }
+
+    // Statut d'achat, écrit uniquement par le webhook Stripe (Admin SDK, hors règles).
+    // Le client peut le lire pour débloquer l'interface, jamais l'écrire : sinon
+    // n'importe qui se passe premium depuis la console du navigateur.
+    match /hosts/{hostId} {
+      allow read:  if signedIn() && request.auth.uid == hostId;
+      allow write: if false;
     }
   }
 }

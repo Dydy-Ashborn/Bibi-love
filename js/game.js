@@ -17,11 +17,12 @@ export function questionCount(durationMin) {
  * Équilibre les thèmes, alterne les types, exclut les questions déjà jouées.
  * @param {{spice:number, durationMin:number, exclude?:string[]}} opts
  */
-export function drawQuestions({ spice, durationMin, exclude = [] }) {
+export function drawQuestions({ spice, durationMin, exclude = [], poolFilter = null }) {
   const { total } = questionCount(durationMin);
   const banned = new Set(exclude);
-  let pool = poolForSpice(spice).filter(q => !banned.has(q.i));
-  if (pool.length < total) pool = poolForSpice(spice);   // rideau : on recycle
+  const base = () => (poolFilter ? poolFilter(poolForSpice(spice)) : poolForSpice(spice));
+  let pool = base().filter(q => !banned.has(q.i));
+  if (pool.length < total) pool = base();   // rideau : on recycle
 
   // Priorise les questions du niveau choisi pour que le curseur se sente.
   const top  = shuffle(pool.filter(q => q.s === spice));
@@ -48,7 +49,8 @@ export function drawQuestions({ spice, durationMin, exclude = [] }) {
  * Manche 3 : manche bonus, la source alterne A/B.
  * Finale   : 7 questions, source = slot A, devineur = slot B.
  */
-export function buildPlan(questionIds, perRound) {
+export function buildPlan(questionIds, perRound, opts = {}) {
+  const perso = Math.max(0, Number(opts.perso) || 0);
   const plan = { rounds: [], final: [] };
   for (let r = 1; r <= 3; r++) {
     const slice = questionIds.slice((r - 1) * perRound, r * perRound);
@@ -60,7 +62,30 @@ export function buildPlan(questionIds, perRound) {
   }
   plan.final = questionIds.slice(perRound * 3, perRound * 3 + RULES.FINAL_QUESTIONS)
     .map(qid => ({ qid, source: 'A' }));
+
+  // Questions personnalisées : elles remplacent les DERNIÈRES questions des manches 1
+  // et 2, dont la source est justement fixe (A puis B). On en laisse toujours au moins
+  // une standard par manche — une manche entièrement perso perdrait le rythme du jeu,
+  // et surtout le `qid` d'origine reste dans le step : il sert de repli pour un couple
+  // dont l'auteur n'a pas écrit assez de questions.
+  if (perso > 0) {
+    const k = Math.min(perso, Math.max(0, perRound - 1));
+    for (let r = 1; r <= 2; r++) {
+      const slot = r === 1 ? 'A' : 'B';
+      const round = plan.rounds[r - 1];
+      for (let n = 0; n < k; n++) {
+        const pos = round.length - k + n;
+        if (pos < 0 || !round[pos]) continue;
+        round[pos] = Object.assign({}, round[pos], { custom: true, slot, n });
+      }
+    }
+  }
   return plan;
+}
+
+/** Nombre de questions perso réellement utilisables par auteur, pour une durée donnée. */
+export function persoUtilisables(perRound, ecrites) {
+  return Math.min(Math.max(0, ecrites), Math.max(0, perRound - 1));
 }
 
 export const ROUND_TITLES = {
@@ -90,7 +115,7 @@ export function roundSubtitle(round, pairing, couple) {
  * @param {{nameA:string,nameB:string}} names prénoms du couple concerné
  * @returns {{token:string,label:string}[]}
  */
-export function optionsFor(q, names = {}) {
+export function optionsFor(q, names = {}, sourceGender) {
   if (q.k === 'who') {
     return [
       { token: 'A',    label: names.nameA || 'Joueur A' },
@@ -99,17 +124,83 @@ export function optionsFor(q, names = {}) {
       { token: 'NONE', label: "Ni l'un ni l'autre" }
     ];
   }
-  return q.o.map((label, idx) => ({ token: String(idx), label }));
+  // Une option décrit toujours la réponse du RÉPONDANT, dans les deux sens de lecture :
+  // elle s'accorde donc à son genre, jamais à celui de qui devine.
+  return q.o.map((label, idx) => ({ token: String(idx), label: accordSuffixes(label, sourceGender) }));
 }
 
-/** Énoncé posé au joueur qui répond sur lui-même. */
-export function selfPrompt(q) { return q.q; }
+const VOYELLE = /^[aàâeéèêëiîïoôuùûyhAÀÂEÉÈÊËIÎÏOÔUÙÛYH]/;
 
-/** Énoncé posé au conjoint qui devine. */
-export function guessPrompt(q, partnerName) {
+/**
+ * Accorde les pronoms et possessifs d'un texte selon un genre.
+ * `g` vaut 'f' (féminin), 'h' (masculin) ou 'n' (non précisé).
+ * En 'n' on ne touche à rien : les formes doubles « il/elle », « ton/ta »,
+ * « gêné(e) » restent affichées telles quelles, ce qui reste lisible et inclusif.
+ */
+export function accordPronoms(text, g) {
+  if (!text || (g !== 'f' && g !== 'h')) return text;
+  const f = g === 'f';
+  return text
+    .replace(/\bIl\/elle\b/g,   f ? 'Elle' : 'Il')
+    .replace(/\bil\/elle\b/g,   f ? 'elle' : 'il')
+    .replace(/\bLui\/elle\b/g,  f ? 'Elle' : 'Lui')
+    .replace(/\blui\/elle\b/g,  f ? 'elle' : 'lui')
+    .replace(/\bTon\/ta\b/g,    f ? 'Ta'   : 'Ton')
+    .replace(/\bton\/ta\b/g,    f ? 'ta'   : 'ton')
+    .replace(/\bLe\/la\b/g,     f ? 'La'   : 'Le')
+    .replace(/\ble\/la\b/g,     f ? 'la'   : 'le')
+    .replace(/\bSon\/sa\b/g,    f ? 'Sa'   : 'Son')
+    .replace(/\bson\/sa\b/g,    f ? 'sa'   : 'son');
+}
+
+/**
+ * Accorde les terminaisons entre parenthèses : « gêné(e) », « furieux(se) »,
+ * « premier(e) », « conducteur(trice) », « sportif(ve) », « quel(le) ».
+ * L'ordre des règles compte : les cas qui suppriment une lettre (x → se, f → ve)
+ * doivent passer AVANT la règle générique « (e) », sinon « furieux(se) » devient
+ * « furieuxse ».
+ */
+export function accordSuffixes(text, g) {
+  if (!text || (g !== 'f' && g !== 'h')) return text;
+  const f = g === 'f';
+  return text
+    .replace(/([A-Za-zÀ-ÿ]+?)teur\(trice\)/g, (m, r) => f ? r + 'trice' : r + 'teur')
+    .replace(/([A-Za-zÀ-ÿ]+?)eur\(se\)/g,     (m, r) => f ? r + 'euse'  : r + 'eur')
+    .replace(/([A-Za-zÀ-ÿ]+?)x\(se\)/g,       (m, r) => f ? r + 'se'    : r + 'x')
+    .replace(/([A-Za-zÀ-ÿ]+?)f\(ve\)/g,       (m, r) => f ? r + 've'    : r + 'f')
+    .replace(/([A-Za-zÀ-ÿ]+?)ier\(e\)/g,      (m, r) => f ? r + 'ière'  : r + 'ier')
+    .replace(/([A-Za-zÀ-ÿ]+?)er\(e\)/g,        (m, r) => f ? r + 'ère'   : r + 'er')
+    .replace(/\(le\)/g,  f ? 'le' : '')
+    .replace(/\(ne\)/g,  f ? 'ne' : '')
+    .replace(/\(e\)/g,   f ? 'e'  : '');
+}
+
+/**
+ * Énoncé posé au joueur qui répond sur lui-même.
+ * Deux genres interviennent : les terminaisons parlent de LUI, les pronoms et
+ * « ton/ta partenaire » parlent de l'AUTRE. Les mélanger est la source d'erreur
+ * évidente ici — d'où deux paramètres distincts.
+ */
+export function selfPrompt(q, selfGender, partnerGender) {
+  return accordPronoms(accordSuffixes(q.q, selfGender), partnerGender);
+}
+
+/**
+ * Énoncé posé au conjoint qui devine. Tout parle du répondant ({p}), donc un seul genre.
+ * Gère l'élision : « la réponse de Ash » se lit mal, on écrit « d'Ash ». Le h est traité
+ * comme une voyelle — un h aspiré en prénom est plus rare qu'un h muet.
+ */
+export function guessPrompt(q, partnerName, sourceGender) {
   const p = partnerName || 'ton/ta conjoint(e)';
-  if (q.k === 'who') return q.q;
-  return (q.g || q.q).replace(/\{p\}/g, p);
+  let phrase = q.k === 'who' ? q.q : (q.g || q.q).replace(/\{p\}/g, p);
+  phrase = accordPronoms(accordSuffixes(phrase, sourceGender), sourceGender);
+  if (VOYELLE.test(p)) {
+    phrase = phrase
+      .replace(new RegExp('\\bde ' + p + '\\b', 'g'), "d'" + p)
+      .replace(new RegExp('\\bque ' + p + '\\b', 'g'), "qu'" + p)
+      .replace(new RegExp('\\bDe ' + p + '\\b', 'g'), "D'" + p);
+  }
+  return phrase;
 }
 
 export function isCorrect(guessToken, sourceToken) {

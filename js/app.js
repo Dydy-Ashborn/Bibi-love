@@ -1,7 +1,10 @@
 /* Bibi Love — routeur et amorçage. */
 import { $, iconHtml, showScreen, toast, sfx, toggleMute, isMuted } from './util.js';
 import { ready } from './firebase.js';
-import { enterCreate, enterLobby, renderHistory, leaveHost } from './host.js';
+import { enterCreate, enterLobby, renderHistory, leaveHost, openPaywall } from './host.js';
+import { refreshPremium, isPremium, diagPremium, resume as planResume, PRIX, LIEN_PAIEMENT } from './plan.js';
+import { uid } from './firebase.js';
+import { copy } from './util.js';
 import { enterJoin, leavePlayer } from './player.js';
 
 /* ── Routes ───────────────────────────────────────────────────────
@@ -25,6 +28,7 @@ async function route() {
     return;
   }
   if (hash === '#/create') { enterCreate(); return; }
+  if (hash === '#/compte') { enterCompte(); return; }
 
   renderHistory();
   showScreen('screen-home');
@@ -44,6 +48,64 @@ $('#btnGoJoin')?.addEventListener('click', () => {
   location.hash = '#/j/' + code;
 });
 $('#inputJoinCode')?.addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnGoJoin').click(); });
+
+/* ── Mon compte ──────────────────────────────────────────────────────────
+ * Le seul écran qui expose l'uid anonyme. Sans lui, impossible de savoir quel
+ * document `hosts/{uid}` créer pour se débloquer soi-même — l'identifiant n'est
+ * écrit nulle part ailleurs et n'apparaît dans aucune interface Firebase avant
+ * la première écriture.
+ */
+function enterCompte() {
+  const r = planResume();
+  $('#compteplan').textContent = r.titre;
+  $('#compteDetail').textContent = isPremium()
+    ? r.ligne + ' Tes invités en profitent sans rien acheter.'
+    : r.ligne + ` Version complète : ${PRIX}, une seule fois.`;
+  $('#compteUid').textContent = uid() || '…';
+
+  // Diagnostic explicite : sans lui, un « version gratuite » alors que le document
+  // existe bien en base est impossible à expliquer sans ouvrir la console.
+  const d = diagPremium();
+  const box = $('#compteDiag');
+  box.hidden = isPremium() || d.etat === 'jamais';
+  box.className = 'diag ' + (d.etat === 'refus' ? 'is-err' : 'is-warn');
+  box.textContent = d.message;
+
+  showScreen('screen-compte');
+}
+
+$('#btnCompteRefresh')?.addEventListener('click', async () => {
+  const btn = $('#btnCompteRefresh');
+  btn.disabled = true;
+  const ok = await refreshPremium();
+  btn.disabled = false;
+  toast(ok ? 'Version complète active.' : "Toujours en version gratuite.", ok ? 'ok' : 'err');
+  enterCompte();
+});
+
+$('#btnCompteCopy')?.addEventListener('click', async () => {
+  const ok = await copy(uid() || '');
+  toast(ok ? 'Identifiant copié.' : uid(), ok ? 'ok' : 'info');
+});
+
+/* ── Paywall : achat et restauration ─────────────────────────────────────── */
+$('#paywallPrice') && ($('#paywallPrice').textContent = PRIX);
+
+$('#paywallBuy')?.addEventListener('click', () => {
+  if (!LIEN_PAIEMENT) {
+    toast("Le lien de paiement n'est pas encore configuré.", 'err');
+    return;
+  }
+  // On repasse par l'app au retour : le webhook Stripe a écrit hosts/{uid}.premium,
+  // `refreshPremium()` au démarrage suivant le relit.
+  location.href = LIEN_PAIEMENT;
+});
+
+$('#paywallRestore')?.addEventListener('click', async () => {
+  const ok = await refreshPremium();
+  toast(ok ? 'Version complète débloquée.' : "Aucun achat trouvé sur ce compte.", ok ? 'ok' : 'err');
+  if (ok) { $('#paywall').classList.remove('is-open'); route(); }
+});
 
 const muteBtn = $('#btnMute');
 const muteIcon = on => iconHtml(on ? 'volume-high' : 'volume-xmark');
@@ -70,6 +132,7 @@ document.addEventListener('keydown', e => {
       "Connexion à Firebase impossible. Vérifie que l'authentification anonyme est activée.";
     return;
   }
+  refreshPremium();                       // non bloquant : l'interface s'ouvre sans attendre
   const wait = Math.max(0, 900 - (Date.now() - t0));
   setTimeout(route, wait);
 })();

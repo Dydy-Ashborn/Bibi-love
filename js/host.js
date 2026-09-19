@@ -4,11 +4,15 @@ import { $, $$, el, icon, iconHtml, showScreen, toast, sfx, burst, shake, showCo
 import { RULES } from './config.js';
 import {
   byId, buildPlan, optionsFor, guessPrompt, isCorrect,
-  ROUND_TITLES, roundSubtitle, rankFor, questionCount
+  ROUND_TITLES, roundSubtitle, questionCount, persoUtilisables
 } from './game.js';
+import { rankFor, podiumLine, pioche, REACT_GOOD, REACT_BAD, REACT_VIDE } from './data/verdicts.js';
+import { PHASE, broadcast } from './live.js';
+import { guard, isPremium, resume as planResume } from './plan.js';
+import { estTonPerso } from './data/questions.js';
 import {
   createGame, loadGame, watchGame, watchPlayers, patchGame,
-  deleteGame, allAnswers, hostGames, uid
+  deleteGame, allAnswers, allCustom, hostGames, watchGuesses, uid
 } from './store.js';
 
 /* ══════════════ ÉTAT ══════════════ */
@@ -18,7 +22,8 @@ const cfg = { mode: 'duo', pairing: 'mixte', spice: 1, durationMin: 45,
 const H = {
   code: null, game: null, players: [], answers: {},
   unsubGame: null, unsubPlayers: null,
-  plan: null, round: 1, qIdx: 0, coupleIdx: 0, phase: 'question',
+  plan: null, round: 1, qIdx: 0, coupleIdx: 0, phase: 'question', seq: 0,
+  unsubGuesses: null, customs: {}, persoMode: 'off',
   picked: null, scores: {}, stats: { asked: 0, correct: 0 },
   finalist: null, final: null, timerId: null
 };
@@ -30,6 +35,8 @@ export function enterCreate() {
   showScreen('screen-create');
 }
 
+const CHAMP_VERS_LIMITE = { spice: 'spice', durationMin: 'duration' };
+
 $$('.choice-grid[data-field]').forEach(grid => {
   grid.addEventListener('click', e => {
     const btn = e.target.closest('.choice');
@@ -37,6 +44,13 @@ $$('.choice-grid[data-field]').forEach(grid => {
     const field = grid.dataset.field;
     let v = btn.dataset.value;
     if (field === 'spice' || field === 'durationMin') v = Number(v);
+
+    // Point de contrôle unique : aucune vérification de plan ailleurs.
+    const limite = CHAMP_VERS_LIMITE[field];
+    if (limite) {
+      const verdict = guard(limite, v);
+      if (!verdict.ok) { openPaywall(verdict.why); return; }
+    }
     cfg[field] = v;
     $$('.choice', grid).forEach(b => b.classList.toggle('is-on', b === btn));
     sfx.tap();
@@ -57,9 +71,34 @@ function syncCreateUI() {
   }
   $('#cardCouples').hidden = false;
   $('#btnAddCouple').hidden = cfg.mode === 'duo' || cfg.couples.length >= RULES.MAX_COUPLES;
+  // L'avertissement 18+ n'apparaît que sur le niveau explicite, qui est cloisonné :
+  // il ne se mélange à aucun autre niveau, dans un sens comme dans l'autre.
+  $('#adultNote').hidden = cfg.spice !== 4;
+  $('#persoNote').hidden = !estTonPerso(cfg.spice);
+
+  // Cadenas sur les options payantes : elles restent visibles et cliquables — c'est
+  // le clic qui ouvre l'offre. Une option grisée ne donne envie de rien.
+  $$('.choice-grid[data-field="spice"] .choice').forEach(b =>
+    b.classList.toggle('is-locked', !guard('spice', Number(b.dataset.value)).ok));
+  $$('.choice-grid[data-field="durationMin"] .choice').forEach(b =>
+    b.classList.toggle('is-locked', !guard('duration', Number(b.dataset.value)).ok));
+
+  const r = planResume();
+  $('#planBanner').hidden = false;
+  $('#planBannerTitle').textContent = r.titre;
+  $('#planBannerLine').textContent = ' — ' + r.ligne;
+  $('#btnPlanUpgrade').hidden = isPremium();
+
   const { perRound, total } = questionCount(cfg.durationMin);
   $('#createSummary').textContent =
     `${total} questions à remplir en amont · 3 manches de ${perRound} + une finale de ${RULES.FINAL_QUESTIONS} questions.`;
+}
+
+/* ══════════════ PAYWALL ══════════════ */
+export function openPaywall(why) {
+  $('#paywallWhy').textContent = why || "Débloque tout le jeu, une bonne fois pour toutes.";
+  $('#paywall').classList.add('is-open');
+  sfx.tap();
 }
 
 function renderCouplesList() {
@@ -81,6 +120,8 @@ function renderCouplesList() {
 
 $('#btnAddCouple')?.addEventListener('click', () => {
   if (cfg.couples.length >= RULES.MAX_COUPLES) return;
+  const verdict = guard('couples', cfg.couples.length + 1);
+  if (!verdict.ok) { openPaywall(verdict.why); return; }
   cfg.couples.push({ name: 'Couple ' + (cfg.couples.length + 1) });
   renderCouplesList(); syncCreateUI(); sfx.tap();
 });
@@ -106,24 +147,42 @@ $('#btnCreateGame')?.addEventListener('click', async () => {
 function joinUrl(code) {
   return location.origin + location.pathname + '#/j/' + code;
 }
+/** Message prêt à coller dans une conversation — le lien seul n'explique rien. */
+function messagePartage(code) {
+  const perso = H.game ? estTonPerso(H.game.spice) : estTonPerso(cfg.spice);
+  return perso
+    ? "On joue à Bibi Love ! Cette partie se joue avec VOS questions : ouvre ce lien et "
+      + "écris celles que ton/ta partenaire devra deviner, avec la réponse que tu attends. "
+      + "Pas de questionnaire à remplir.\n" + joinUrl(code)
+    : "On joue à Bibi Love ! Avant la soirée, ouvre ce lien : tu réponds à ton "
+      + "questionnaire (5 min) et tu peux écrire tes propres questions pour ton/ta "
+      + "partenaire. Personne ne verra tes réponses.\n" + joinUrl(code);
+}
+
 function showShare(code) {
   $('#shareCode').textContent = code;
   $('#shareLink').textContent = joinUrl(code);
+  $('#shareMessage').textContent = messagePartage(code);
   showScreen('screen-share');
   burst('confetti', 60); sfx.win();
 }
+$('#btnCopyMessage')?.addEventListener('click', async () => {
+  const ok = await copy($('#shareMessage').textContent);
+  toast(ok ? 'Message copié, plus qu\'à coller.' : 'Copie impossible, sélectionne le texte.', ok ? 'ok' : 'err');
+});
+
 $('#btnCopyLink')?.addEventListener('click', async () => {
   const ok = await copy($('#shareLink').textContent);
   toast(ok ? 'Lien copié' : 'Copie impossible, sélectionne le lien.', ok ? 'ok' : 'err');
 });
 $('#btnShareLink')?.addEventListener('click', async () => {
   const url = $('#shareLink').textContent;
-  if (navigator.share) { try { await navigator.share({ title: 'Bibi Love', text: 'Réponds à ton questionnaire avant la soirée', url }); } catch {} }
+  if (navigator.share) { try { await navigator.share({ title: 'Bibi Love', text: messagePartage(H.code), url }); } catch {} }
   else { const ok = await copy(url); toast(ok ? 'Lien copié' : 'Copie impossible.', ok ? 'ok' : 'err'); }
 });
 $('#btnGoLobby')?.addEventListener('click', () => { location.hash = '#/host/' + H.code; });
 $('#btnLobbyShare')?.addEventListener('click', async () => {
-  const ok = await copy(joinUrl(H.code));
+  const ok = await copy(messagePartage(H.code));
   toast(ok ? 'Lien copié' : joinUrl(H.code), ok ? 'ok' : 'info');
 });
 
@@ -179,11 +238,49 @@ function renderLobby() {
     box.append(el('div', { class: 'lobby-couple' }, el('h3', {}, c.name), slots));
   });
 
+  // Le repli étant décidé couple par couple (voir `resoudreQuestion`), on compte les
+  // couples prêts plutôt qu'un minimum global : un couple qui n'a rien écrit ne doit
+  // pas priver les autres de leurs questions.
+  const ecrites = H.players.reduce((n, p) => n + (p.customCount || 0), 0);
+  const prets = g.couples.filter(c => {
+    const { A, B } = coupleOf(c);
+    return (A && A.customCount) && (B && B.customCount);
+  }).length;
+  const maxEcrites = Math.max(0, ...H.players.map(p => p.customCount || 0));
+  const utilisables = persoUtilisables(g.perRound, maxEcrites);
+
+  // En ton « Questions perso », il n'y a rien à choisir : la partie EST la partie perso.
+  // Le sélecteur disparaît, sinon l'hôte croit pouvoir revenir en arrière alors que
+  // personne n'a rempli de questionnaire.
+  const tonPerso = estTonPerso(g.spice);
+  $('.choice-grid[data-field="persoMode"]').hidden = tonPerso;
+  if (tonPerso) H.persoMode = 'mix';
+
+  const btnMix = $('.choice-grid[data-field="persoMode"] .choice[data-value="mix"]');
+  if (btnMix) btnMix.disabled = prets === 0;
+  if (!tonPerso && prets === 0 && H.persoMode === 'mix') {
+    H.persoMode = 'off';
+    $$('.choice-grid[data-field="persoMode"] .choice').forEach(b =>
+      b.classList.toggle('is-on', b.dataset.value === 'off'));
+  }
+  $('#persoSummary').innerHTML = tonPerso
+    ? (prets === 0
+        ? `<strong>Partie 100 % questions perso.</strong> ${ecrites} écrite(s), mais il en faut des <strong>deux côtés</strong> dans un couple. Sans ça, ils recevront des questions Bibi Love familiales.`
+        : `<strong>Partie 100 % questions perso</strong> · ${prets}/${g.couples.length} couple(s) prêt(s) · ${ecrites} question(s) écrite(s).`)
+    : ecrites === 0
+      ? "Personne n'a encore écrit de question. Le lien le leur propose à côté du questionnaire."
+      : prets === 0
+        ? `<strong>${ecrites}</strong> question(s) écrite(s), mais dans aucun couple les <strong>deux</strong> membres n'en ont écrit. Il en faut des deux côtés.`
+        : `<strong>${prets}/${g.couples.length}</strong> couple(s) prêt(s) · <strong>${ecrites}</strong> question(s) écrite(s). ` +
+          `Jusqu'à <strong>${utilisables} par personne</strong> en manches 1 et 2 ; les couples qui n'en ont pas écrit reçoivent des questions Bibi Love.`;
+
   const resumable = canResume(g);
   $('#lobbyStatus').innerHTML = resumable
     ? `Partie en cours — <strong>${resumeLabel(g)}</strong>. Les scores ont été sauvegardés, tu reprends exactement où tu t'es arrêté.`
-    : `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
-      `les réponses manquantes compteront comme fausses.`;
+    : tonPerso
+      ? `<strong>${prets * 2}/${expected}</strong> joueurs ont écrit leurs questions. Aucun questionnaire à remplir dans ce mode.`
+      : `<strong>${ready}/${expected}</strong> joueurs prêts. Tu peux lancer dès que tout le monde a fini — ` +
+        `les réponses manquantes compteront comme fausses.`;
   const btn = $('#btnStartLive');
   btn.innerHTML = resumable ? iconHtml('play') + ' Reprendre la partie'
                 : g.status === 'finished' ? iconHtml('rotate-right') + ' Relancer une partie'
@@ -202,12 +299,23 @@ function resumeLabel(g) {
   return `manche ${L.round}, question ${(L.qIdx || 0) + 1}/${g.perRound}`;
 }
 
+$('.choice-grid[data-field="persoMode"]')?.addEventListener('click', e => {
+  const btn = e.target.closest('.choice');
+  if (!btn || btn.disabled) return;
+  H.persoMode = btn.dataset.value;
+  $$('.choice-grid[data-field="persoMode"] .choice').forEach(b => b.classList.toggle('is-on', b === btn));
+  sfx.tap();
+  renderLobby();
+});
+
 $('#btnStartLive')?.addEventListener('click', () => {
   if (canResume(H.game)) { startLive(true); return; }
 
   const total = H.game.questionIds.length;
-  const late = H.players.filter(p => (p.answered || 0) < total).map(p => p.name);
   const go = () => startLive(false);
+  const late = estTonPerso(H.game.spice)
+    ? H.players.filter(p => !(p.customCount > 0)).map(p => p.name)
+    : H.players.filter(p => (p.answered || 0) < total).map(p => p.name);
 
   if (H.game.status === 'finished') {
     showConfirmModal(
@@ -217,7 +325,9 @@ $('#btnStartLive')?.addEventListener('click', () => {
   }
   if (late.length) {
     showConfirmModal(
-      `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} pas terminé. Leurs questions sans réponse seront perdues. On lance quand même ?`,
+      estTonPerso(H.game.spice)
+        ? `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} écrit aucune question. Leur couple jouera des questions Bibi Love à la place. On lance quand même ?`
+        : `${late.join(', ')} n'${late.length > 1 ? 'ont' : 'a'} pas terminé. Leurs questions sans réponse seront perdues. On lance quand même ?`,
       go, { okLabel: 'Lancer la partie' });
   } else go();
 });
@@ -236,7 +346,6 @@ $('#btnDeleteGame')?.addEventListener('click', () => {
 async function startLive(resume = false) {
   const g = H.game;
   H.answers = await allAnswers(H.code, H.players);
-  H.plan = buildPlan(g.questionIds, g.perRound);
 
   if (resume && canResume(g)) {
     const L = g.live;
@@ -245,10 +354,13 @@ async function startLive(resume = false) {
     H.coupleIdx = L.coupleIdx || 0;
     H.scores    = Object.assign({}, L.scores);
     H.stats     = Object.assign({ asked: 0, correct: 0 }, L.stats);
+    H.persoMode = L.persoMode || 'off';
     H.finalist  = L.finalistId ? g.couples.find(c => c.id === L.finalistId) || null : null;
     H.final     = L.final ? Object.assign({}, L.final) : null;
     g.couples.forEach(c => { if (H.scores[c.id] == null) H.scores[c.id] = 0; });
+    await chargerPlan(g);
     H.phase = 'question'; H.picked = null;
+    ecouteManettes();
     showScreen('screen-live');
 
     // La sauvegarde a eu lieu après la révélation : on enchaîne sur la question suivante
@@ -264,14 +376,38 @@ async function startLive(resume = false) {
     return;
   }
 
+  await chargerPlan(g);
   H.round = 1; H.qIdx = 0; H.coupleIdx = 0; H.phase = 'question'; H.picked = null;
   H.stats = { asked: 0, correct: 0 };
   H.finalist = null; H.final = null;
   H.scores = {}; g.couples.forEach(c => { H.scores[c.id] = 0; });
   await patchGame(H.code, { status: 'live', finalResult: null, finalistId: null }).catch(() => {});
+  ecouteManettes();
   showScreen('screen-live');
   renderLive();
   persistLive();
+}
+
+/** Branche l'écoute des choix envoyés depuis les téléphones (une seule fois). */
+function ecouteManettes() {
+  if (H.unsubGuesses) return;
+  H.unsubGuesses = watchGuesses(H.code, onGuesses);
+}
+
+/**
+ * Charge les questions perso si le mode est actif, puis construit le plan.
+ * `perso` est le maximum écrit par un auteur, pas le minimum : les couples qui en ont
+ * écrit moins retombent sur la question Bibi Love d'origine, question par question
+ * (voir `resoudreQuestion`). Prendre le minimum priverait tout le monde dès qu'une
+ * seule personne n'a rien écrit.
+ */
+async function chargerPlan(g) {
+  if (estTonPerso(g.spice)) H.persoMode = 'mix';
+  H.customs = H.persoMode === 'mix' ? await allCustom(H.code, H.players) : {};
+  const perso = H.persoMode === 'mix'
+    ? Math.max(0, ...Object.values(H.customs).map(l => l.length))
+    : 0;
+  H.plan = buildPlan(g.questionIds, g.perRound, { perso });
 }
 
 /**
@@ -291,6 +427,7 @@ function persistLive() {
       phase: H.phase,
       scores: H.scores,
       stats: H.stats,
+      persoMode: H.persoMode,
       finalistId: H.finalist ? H.finalist.id : null,
       final: H.final ? {
         idx: H.final.idx, correct: H.final.correct,
@@ -303,7 +440,11 @@ function persistLive() {
 
 function names(c) {
   const { A, B } = coupleOf(c);
-  return { nameA: A ? A.name : 'Joueur A', nameB: B ? B.name : 'Joueur B', A, B };
+  return {
+    nameA: A ? A.name : 'Joueur A', nameB: B ? B.name : 'Joueur B',
+    genderA: A ? (A.gender || 'n') : 'n', genderB: B ? (B.gender || 'n') : 'n',
+    A, B
+  };
 }
 
 function currentStep() {
@@ -327,12 +468,36 @@ function renderScores(bumpId) {
   });
 }
 
+/**
+ * Résout la question réellement posée pour un couple donné.
+ * Une étape marquée `custom` pioche dans les questions écrites par l'auteur du couple ;
+ * s'il n'en a pas écrit assez, on retombe sur la question Bibi Love d'origine restée
+ * dans `step.qid`. C'est ce repli qui permet de lancer le mode perso même quand un
+ * seul couple sur trois a joué le jeu.
+ */
+function resoudreQuestion(step, source) {
+  if (step.custom && source) {
+    const it = (H.customs[source.uid] || [])[step.n];
+    if (it && it.q && it.a) {
+      return {
+        perso: true, kind: 'texte',
+        q: { i: `x-${source.uid}-${step.n}`, k: 'perso', t: 'perso', s: 0, q: it.q },
+        expected: it.a, truth: null
+      };
+    }
+  }
+  const q = byId(step.qid);
+  return {
+    perso: false, kind: 'qcm', q, expected: null,
+    truth: source ? (H.answers[source.uid] || {})[q.i] : null
+  };
+}
+
 function renderLive() {
   const g = H.game;
   const couple = currentCouple();
   const n = names(couple);
   const step = currentStep();
-  const q = byId(step.qid);
 
   $('#liveRoundTitle').textContent = ROUND_TITLES[H.round];
   $('#liveRoundSub').textContent = roundSubtitle(H.round, g.pairing, n);
@@ -342,27 +507,53 @@ function renderLive() {
   const guesser = step.source === 'A' ? n.B : n.A;
   const sourceName  = source  ? source.name  : (step.source === 'A' ? n.nameA : n.nameB);
   const guesserName = guesser ? guesser.name : (step.source === 'A' ? n.nameB : n.nameA);
+  const sourceGender = step.source === 'A' ? n.genderA : n.genderB;
+
+  const { q, truth, perso, kind, expected } = resoudreQuestion(step, source);
+  const texte = kind === 'texte';
 
   $('#liveTurn').innerHTML = H.round === 'final'
-    ? `<b>${guesserName}</b>, réponds vite : que pense <b>${sourceName}</b> ?`
-    : `<b>${couple.name}</b> — <b>${guesserName}</b> devine ce qu'a répondu <b>${sourceName}</b>`;
+    ? `<b>${guesserName}</b>, réponds vite : qu'a mis <b>${sourceName}</b> ?`
+    : perso
+      ? `${iconHtml('wand-magic-sparkles')} <b>Question de ${sourceName}</b> — à <b>${guesserName}</b> de répondre`
+      : `<b>${couple.name}</b> — <b>${guesserName}</b> devine ce qu'a répondu <b>${sourceName}</b>`;
 
-  $('#liveQuestion').textContent = guessPrompt(q, sourceName);
+  const prompt = perso ? q.q : guessPrompt(q, sourceName, sourceGender);
+  $('#liveQuestion').textContent = prompt;
+  $('#liveQuestion').classList.toggle('is-perso', !!perso);
 
-  const truth = source ? (H.answers[source.uid] || {})[q.i] : null;
+  const opts = texte ? [] : optionsFor(q, n, sourceGender);
   const box = $('#liveOptions');
   box.innerHTML = '';
-  optionsFor(q, n).forEach((o, k) => {
+  box.hidden = texte;
+  opts.forEach((o, k) => {
     const b = el('button', { class: 'opt', 'data-token': o.token },
       el('span', { class: 'opt-key' }, 'ABCD'[k]), el('span', {}, o.label));
     b.addEventListener('click', () => answer(o.token, truth, couple, step));
     box.append(b);
   });
 
+  // Réponse libre : la réponse attendue reste cachée jusqu'au dévoilement, sinon
+  // toute la salle la lit sur l'écran avant que le joueur n'ait ouvert la bouche.
+  $('#liveTexte').hidden = !texte;
+  $('#liveTexte').classList.remove('is-ok', 'is-ko');
+  if (texte) {
+    $('#liveTexteWho').textContent = `Réponse de ${guesserName}`;
+    $('#liveTexteAuthor').textContent = `Ce qu'attendait ${sourceName}`;
+    $('#liveTexteGiven').textContent = 'En attente…';
+    $('#liveTexteGiven').classList.add('is-waiting');
+    $('#liveTexteExpectedRow').hidden = true;
+    $('#liveTexteExpected').textContent = expected || '';
+    $('#btnReveal').hidden = false;
+    $('#btnJugeOk').hidden = true;
+    $('#btnJugeKo').hidden = true;
+  }
+
   $('#liveVerdict').hidden = true;
   $('#liveTimer').hidden = H.round !== 'final';
   H.phase = 'question'; H.picked = null;
-  $('#btnLiveNext').hidden = H.round === 'final';
+  H.step = { truth, couple, step, kind, expected, sourceName, guesserName, opts };
+  $('#btnLiveNext').hidden = H.round === 'final' || texte;
   $('#btnLiveNext').innerHTML = 'Passer ' + iconHtml('arrow-right');
 
   const totalQ = H.round === 'final' ? RULES.FINAL_QUESTIONS : g.perRound;
@@ -371,15 +562,102 @@ function renderLive() {
     ? `Question ${nowQ}/${totalQ} · ${H.final.errors} erreur(s)`
     : `Question ${nowQ}/${totalQ} · couple ${H.coupleIdx + 1}/${g.couples.length}`;
 
+  // Cas dégradés : place vide, ou joueur qui n'avait pas rempli son questionnaire.
   if (!source) {
     $('#liveVerdict').hidden = false;
     $('#liveVerdict').className = 'tv-verdict ko';
     $('#liveVerdict').innerHTML = `Personne sur cette place<small>Question annulée</small>`;
-  } else if (truth == null && H.round !== 'final') {
+  } else if (!texte && truth == null && H.round !== 'final') {
+    // Le cas « rien rempli » ne concerne que les questions de la banque : sur une
+    // question perso, l'absence de `truth` est normale — la réponse attendue est du
+    // texte libre et c'est l'hôte qui tranche.
     $('#liveVerdict').hidden = false;
     $('#liveVerdict').className = 'tv-verdict ko';
-    $('#liveVerdict').innerHTML = `${sourceName} n'a pas répondu à celle-ci<small>Aucun point en jeu</small>`;
+    $('#liveVerdict').innerHTML =
+      `${sourceName} n'a rien rempli<small>${pioche(REACT_VIDE, 'vide')}</small>`;
   }
+
+  // Diffusion vers les téléphones : nouvelle question = nouveau `seq`.
+  H.seq++;
+  publish(broadcast({
+    seq: H.seq, phase: PHASE.QUESTION, kind, perso, round: H.round, qid: q.i,
+    coupleId: couple.id, coupleName: couple.name,
+    sourceUid: source ? source.uid : null, sourceName,
+    guesserUid: guesser ? guesser.uid : null, guesserName,
+    sourceGender, prompt, options: opts, scores: H.scores
+  }));
+}
+
+/**
+ * Publie l'état courant vers les téléphones.
+ * Champ `bc` à la racine du doc, et surtout PAS sous `live` : `persistLive()` réécrit
+ * l'objet `live` en entier à chaque transition et effacerait la diffusion publiée
+ * juste avant — les téléphones resteraient bloqués sur la question précédente.
+ */
+function publish(bc) {
+  H.bc = bc;
+  patchGame(H.code, { bc }).catch(() => { /* la partie continue sans manette */ });
+}
+
+/**
+ * Choix reçu depuis le téléphone du devineur.
+ * Un choix dont le `seq` ne correspond plus à la question affichée est ignoré :
+ * sinon un double tap ou un téléphone en retard ferait marquer des points sur
+ * la question suivante.
+ */
+function onGuesses(list) {
+  if (H.phase !== 'question' || !H.bc || !H.step) return;
+  const attendu = H.bc.guesserUid;
+  if (!attendu) return;
+  const g = list.find(x => x.uid === attendu && x.seq === H.seq);
+  if (!g) return;
+
+  if (H.step.kind === 'texte') {
+    if (!g.text) return;
+    H.step.given = g.text;
+    const box = $('#liveTexteGiven');
+    box.textContent = g.text;
+    box.classList.remove('is-waiting');
+    sfx.reveal();
+    return;                     // en réponse libre, c'est l'hôte qui tranche
+  }
+  if (g.token) answer(g.token, H.step.truth, H.step.couple, H.step.step);
+}
+
+/* ══════════════ RÉPONSE LIBRE : DÉVOILEMENT ET ARBITRAGE ══════════════ */
+
+$('#btnReveal')?.addEventListener('click', () => {
+  if (!H.step || H.step.kind !== 'texte') return;
+  $('#liveTexteExpectedRow').hidden = false;
+  $('#btnReveal').hidden = true;
+  $('#btnJugeOk').hidden = false;
+  $('#btnJugeKo').hidden = false;
+  sfx.reveal();
+  // La réponse attendue part vers les téléphones à l'instant exact où elle apparaît
+  // sur l'écran partagé — jamais avant, le doc de partie étant lisible par tous.
+  publish(Object.assign({}, H.bc, {
+    expected: H.step.expected || null,
+    given: H.step.given || null,
+    at: Date.now()
+  }));
+});
+
+$('#btnJugeOk')?.addEventListener('click', () => jugerTexte(true));
+$('#btnJugeKo')?.addEventListener('click', () => jugerTexte(false));
+
+/** L'hôte tranche : la réponse donnée colle-t-elle à ce qu'attendait l'auteur ? */
+function jugerTexte(ok) {
+  if (H.phase !== 'question' || !H.step || H.step.kind !== 'texte') return;
+  const { couple, step } = H.step;
+  H.phase = 'reveal';
+  $('#btnJugeOk').hidden = true;
+  $('#btnJugeKo').hidden = true;
+  $('#liveTexteExpectedRow').hidden = false;
+  $('#liveTexte').classList.toggle('is-ok', ok);
+  $('#liveTexte').classList.toggle('is-ko', !ok);
+  appliquerVerdict(ok, couple, step, {
+    given: H.step.given || null, expected: H.step.expected || null
+  });
 }
 
 function answer(token, truth, couple, step) {
@@ -400,39 +678,70 @@ function answer(token, truth, couple, step) {
     if (t !== token && t !== truth) b.classList.add('is-dim');
   });
 
+  const libelle = tok => {
+    const o = (H.step && H.step.opts || []).find(x => x.token === tok);
+    return o ? o.label : null;
+  };
+  appliquerVerdict(ok, couple, step, {
+    picked: token, truth: truth ?? null,
+    pickedLabel: libelle(token), truthLabel: truth != null ? libelle(truth) : null
+  });
+}
+
+/**
+ * Score, punchline, diffusion : tronc commun à la QCM et à la réponse libre arbitrée.
+ * `extra` porte ce que les téléphones doivent afficher à la révélation.
+ */
+function appliquerVerdict(ok, couple, step, extra = {}) {
   const v = $('#liveVerdict');
   v.hidden = false;
+  const punch = pioche(ok ? REACT_GOOD : REACT_BAD, ok ? 'good' : 'bad');
+  const pts = H.round === 'final' ? 0 : step.points;
 
   if (H.round === 'final') {
     if (ok) { H.final.correct++; sfx.good(); }
     else    { H.final.errors++;  sfx.bad(); shake($('#liveStageWrap')); }
     v.className = 'tv-verdict ' + (ok ? 'ok' : 'ko');
-    v.textContent = ok ? 'Exact !' : 'Raté…';
+    v.innerHTML = (ok ? 'Exact !' : 'Raté…') + `<small>${punch}</small>`;
     $('#liveProgress').textContent =
       `Question ${H.final.idx + 1}/${RULES.FINAL_QUESTIONS} · ${H.final.errors} erreur(s)`;
+    publishReveal(ok, 0, extra);
     persistLive();
-    setTimeout(() => nextFinal(), 700);
+    setTimeout(() => nextFinal(), 900);
     return;
   }
 
-  const pts = step.points;
   H.stats.asked++;
   if (ok) {
     H.stats.correct++;
     H.scores[couple.id] = (H.scores[couple.id] || 0) + pts;
     sfx.good(); burst('hearts', 26);
     v.className = 'tv-verdict ok';
-    v.innerHTML = `Dans le mille ! <span class="pts">+${pts}</span><small>${couple.name} marque</small>`;
+    v.innerHTML = `Dans le mille ! <span class="pts">+${pts}</span><small>${punch}</small>`;
   } else {
     sfx.bad(); shake($('#liveStageWrap'));
     v.className = 'tv-verdict ko';
-    v.innerHTML = truth == null
-      ? `Aucune réponse enregistrée<small>0 point</small>`
-      : `Perdu !<small>Il fallait cocher l'autre case…</small>`;
+    v.innerHTML = (extra.truth == null && extra.expected == null)
+      ? `Aucune réponse enregistrée<small>${pioche(REACT_VIDE, 'vide')}</small>`
+      : `Perdu !<small>${punch}</small>`;
   }
   renderScores(ok ? couple.id : null);
+  $('#btnLiveNext').hidden = false;
   $('#btnLiveNext').innerHTML = 'Suivant ' + iconHtml('arrow-right');
+  publishReveal(ok, ok ? pts : 0, extra);
   persistLive();
+}
+
+/** Diffuse le résultat aux téléphones pour qu'ils jouent la même animation. */
+function publishReveal(ok, pts, extra = {}) {
+  if (!H.bc) return;
+  publish(Object.assign({}, H.bc, {
+    phase: PHASE.REVEAL, correct: !!ok, points: pts,
+    picked: extra.picked ?? null, truth: extra.truth ?? null,
+    pickedLabel: extra.pickedLabel ?? null, truthLabel: extra.truthLabel ?? null,
+    given: extra.given ?? null, expected: extra.expected ?? null,
+    scores: H.scores, at: Date.now()
+  }));
 }
 
 $('#btnLiveNext')?.addEventListener('click', () => {
@@ -507,13 +816,15 @@ function showPodium(finalWin, why) {
   const g = H.game;
   const ranked = [...g.couples].sort((a, b) => (H.scores[b.id] || 0) - (H.scores[a.id] || 0));
 
+  const RANK_ICONS = ['trophy', 'medal', 'award', 'star'];
   const board = $('#podiumBoard');
   board.innerHTML = '';
-  const RANK_ICONS = ['trophy', 'medal', 'award', 'star'];
   ranked.forEach((c, i) => {
-    board.append(el('div', { class: 'podium-row' + (i === 0 ? ' is-first' : '') },
+    board.append(el('div', { class: 'podium-row' + (i === 0 ? ' is-first' : '') + (i === ranked.length - 1 && ranked.length > 1 ? ' is-last' : '') },
       el('span', { class: 'podium-rank' }, icon(RANK_ICONS[i] || 'star')),
-      el('span', { class: 'podium-name' }, c.name),
+      el('span', {},
+        el('div', { class: 'podium-name' }, c.name),
+        el('div', { class: 'podium-roast' }, podiumLine(i, ranked.length))),
       el('span', { class: 'podium-pts' }, String(H.scores[c.id] || 0))));
   });
 
@@ -528,12 +839,20 @@ function showPodium(finalWin, why) {
     $('#podiumEmoji').innerHTML = iconHtml(finalWin ? 'trophy' : 'heart-crack');
     $('#podiumTitle').textContent = finalWin ? H.finalist.name : 'Finale perdue';
     $('#podiumLine').innerHTML = finalWin
-      ? `${H.finalist.name} rafle la mise après une finale sans faute.<br><small>${why}</small>`
-      : `${H.finalist.name} termine en tête au score mais s'effondre en finale.<br><small>${why}</small>`;
+      ? `${podiumLine(0, ranked.length)}<br><small>${why}</small>`
+      : `${H.finalist.name} termine en tête au score et s'effondre en finale. Le pire scénario.<br><small>${why}</small>`;
   }
 
   if (finalWin) { sfx.win(); burst('confetti', 140); setTimeout(() => burst('hearts', 50), 400); }
   else { sfx.lose(); }
+
+  // Diffusion du classement : chaque téléphone affiche son propre commentaire.
+  publish(broadcast({
+    seq: ++H.seq, phase: PHASE.FINI, scores: H.scores,
+    coupleId: H.finalist ? H.finalist.id : null,
+    coupleName: H.finalist ? H.finalist.name : null,
+    correct: finalWin
+  }));
 
   patchGame(H.code, { status: 'finished', finalistId: H.finalist?.id || null,
                       finalResult: { win: finalWin, correct: H.final.correct, errors: H.final.errors } })
@@ -560,6 +879,13 @@ $('#btnLiveQuit')?.addEventListener('click', () => {
     { okLabel: 'Quitter' });
 });
 
+/* ══════════════ BOUTONS DU PAYWALL ══════════════ */
+$('#btnPlanUpgrade')?.addEventListener('click', () => openPaywall());
+$('#paywallCancel')?.addEventListener('click', () => $('#paywall').classList.remove('is-open'));
+$('#paywall')?.addEventListener('click', e => {
+  if (e.target === $('#paywall')) $('#paywall').classList.remove('is-open');
+});
+
 /* ══════════════ HISTORIQUE ══════════════ */
 export function renderHistory() {
   const list = hostGames();
@@ -580,5 +906,6 @@ export function renderHistory() {
 function detach() {
   if (H.unsubGame) { H.unsubGame(); H.unsubGame = null; }
   if (H.unsubPlayers) { H.unsubPlayers(); H.unsubPlayers = null; }
+  if (H.unsubGuesses) { H.unsubGuesses(); H.unsubGuesses = null; }
 }
 export function leaveHost() { detach(); clearInterval(H.timerId); }

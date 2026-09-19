@@ -1,4 +1,4 @@
-/* Font Awesome Free 6.7.2 — sous-ensemble vendorisé (42 icônes réellement utilisées).
+/* Font Awesome Free 6.7.2 — sous-ensemble vendorisé (46 icônes réellement utilisées).
  * Icônes CC BY 4.0 · Police SIL OFL 1.1 · Code MIT — https://fontawesome.com
  * Vendorisé plutôt que chargé depuis un CDN : c'est une PWA, les icônes doivent
  * survivre au mode hors-ligne et être mises en cache par le service worker.
@@ -22,9 +22,6 @@
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
-.fa-fw{width:1.28em;text-align:center}
-.fa-lg{font-size:1.33em;vertical-align:-.075em}
-
 .fa-heart::before{content:"\f004"}
 .fa-heart-crack::before{content:"\f7a9"}
 .fa-heart-pulse::before{content:"\f21e"}
@@ -67,3 +64,7 @@
 .fa-people-group::before{content:"\e533"}
 .fa-ranking-star::before{content:"\e561"}
 .fa-crown::before{content:"\f521"}
+.fa-lock::before{content:"\f023"}
+.fa-lock-open::before{content:"\f3c1"}
+.fa-circle-xmark::before{content:"\f057"}
+.fa-circle-info::before{content:"\f05a"}

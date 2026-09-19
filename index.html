@@ -52,6 +52,48 @@
     </div>
 
     <p class="mini-note">Chaque joueur remplit son questionnaire de son côté. Le soir venu, vous n'avez plus qu'à jouer.</p>
+    <button class="link-btn" data-goto="#/compte">Mon compte</button>
+  </div>
+</section>
+
+<!-- ═══════════════ MON COMPTE ═══════════════ -->
+<section id="screen-compte" class="screen">
+  <div class="wrap">
+    <header class="bar">
+      <button class="btn btn-back" data-goto="#/" aria-label="Retour"><i class="fa fa-arrow-left"></i></button>
+      <h1 class="bar-title">Mon compte</h1>
+    </header>
+
+    <div class="card">
+      <h2 class="card-title"><i class="fa fa-crown"></i> <span id="compteplan">—</span></h2>
+      <p id="compteDetail" class="card-sub"></p>
+      <button id="btnCompteRefresh" class="btn btn-ghost btn-sm"><i class="fa fa-rotate-right"></i> Vérifier mon statut</button>
+      <p id="compteDiag" class="diag" hidden></p>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Mon identifiant</h2>
+      <p class="card-sub">C'est lui qui porte ton achat. Il est propre à ce navigateur : le
+        noter quelque part évite de le perdre.</p>
+      <div class="link-box"><span id="compteUid" class="link-text mono">—</span></div>
+      <div class="row-btns">
+        <button id="btnCompteCopy" class="btn btn-primary"><i class="fa fa-copy"></i> Copier l'identifiant</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Débloquer sans payer</h2>
+      <p class="card-sub">Réservé au propriétaire du projet Firebase. Dans la console
+        Firebase → Firestore → <strong>Démarrer une collection</strong> :</p>
+      <ol class="steps">
+        <li>ID de la collection : <code>hosts</code></li>
+        <li>ID du document : <strong>colle ton identifiant ci-dessus</strong></li>
+        <li>Champ <code>premium</code>, type <em>booléen</em>, valeur <code>true</code></li>
+        <li>Reviens ici et touche « Vérifier mon statut »</li>
+      </ol>
+      <p class="card-sub">Les règles de sécurité interdisent d'écrire ce document depuis
+        l'app : c'est ce qui empêche n'importe qui de se déclarer premium tout seul.</p>
+    </div>
   </div>
 </section>
 
@@ -103,7 +145,7 @@
       <div class="card" id="cardSpice">
         <h2 class="card-title">Ton des questions</h2>
         <p class="card-sub">À régler <strong>avant</strong> d'envoyer le lien : il détermine les questions posées en amont.</p>
-        <div class="choice-grid choice-grid-3" data-field="spice">
+        <div class="choice-grid choice-grid-4" data-field="spice">
           <button class="choice is-on" data-value="1">
             <span class="choice-emoji"><i class="fa fa-baby"></i></span><span class="choice-label">Familial</span>
             <span class="choice-hint">Apéro, belle-famille, enfants dans la pièce.</span>
@@ -114,9 +156,31 @@
           </button>
           <button class="choice" data-value="3">
             <span class="choice-emoji"><i class="fa fa-fire"></i></span><span class="choice-label">Intime</span>
-            <span class="choice-hint">Registre allusif de fin de soirée, jamais explicite.</span>
+            <span class="choice-hint">Allusif, fin de soirée, jamais explicite.</span>
+          </button>
+          <button class="choice choice-adult" data-value="4">
+            <span class="choice-badge">18+</span>
+            <span class="choice-emoji"><i class="fa fa-fire-flame-curved"></i></span><span class="choice-label">Sans filtre</span>
+            <span class="choice-hint">Explicite et frontal. Rien d'autre que du sexe.</span>
+          </button>
+          <button class="choice choice-perso" data-value="5">
+            <span class="choice-emoji"><i class="fa fa-wand-magic-sparkles"></i></span><span class="choice-label">Questions perso</span>
+            <span class="choice-hint">Uniquement les leurs. Aucun questionnaire à remplir.</span>
           </button>
         </div>
+        <p id="persoNote" class="perso-note" hidden>
+          <i class="fa fa-wand-magic-sparkles"></i>
+          Partie entièrement écrite par les joueurs : le lien ne leur propose
+          <strong>que</strong> le composeur de questions, pas de questionnaire.
+          Il faut que les <strong>deux</strong> membres de chaque couple en écrivent —
+          sinon leur couple reçoit des questions Bibi Love familiales en secours.
+        </p>
+        <p id="adultNote" class="adult-note" hidden>
+          <i class="fa fa-fire-flame-curved"></i>
+          Questionnaire 100&nbsp;% explicite, sans aucune question des autres niveaux.
+          Réservé à des adultes consentants&nbsp;: assure-toi que tous les invités savent
+          ce qu'ils reçoivent avant d'envoyer le lien.
+        </p>
       </div>
 
       <div class="card" id="cardDuration">
@@ -129,6 +193,11 @@
         <p id="createSummary" class="summary-line"></p>
       </div>
 
+      <div id="planBanner" class="plan-banner" hidden>
+        <span><i class="fa fa-crown"></i> <strong id="planBannerTitle">Version gratuite</strong>
+        <span id="planBannerLine"></span></span>
+        <button id="btnPlanUpgrade" class="btn btn-gold btn-sm">Débloquer</button>
+      </div>
       <button id="btnCreateGame" class="btn btn-primary btn-xl">Générer le lien <i class="fa fa-link"></i></button>
     </div>
   </div>
@@ -140,11 +209,18 @@
     <div class="center-stack">
       <p class="eyebrow">Partie créée</p>
       <div id="shareCode" class="big-code">—</div>
-      <p class="card-sub">Envoie ce lien à tous les joueurs. Chacun répond de son côté, personne ne voit les réponses des autres.</p>
+      <p class="card-sub">Un seul lien pour tout le monde. Chacun y répond à son questionnaire
+        <strong>et</strong> y écrit ses propres questions, quand il veut, avant la soirée.</p>
+
+      <div class="share-msg">
+        <span class="field-label">Message prêt à envoyer</span>
+        <p id="shareMessage" class="share-msg-text"></p>
+      </div>
       <div class="link-box"><span id="shareLink" class="link-text">—</span></div>
       <div class="row-btns">
-        <button id="btnCopyLink" class="btn btn-primary"><i class="fa fa-copy"></i> Copier le lien</button>
+        <button id="btnCopyMessage" class="btn btn-primary"><i class="fa fa-copy"></i> Copier le message</button>
         <button id="btnShareLink" class="btn btn-ghost"><i class="fa fa-share-nodes"></i> Partager…</button>
+        <button id="btnCopyLink" class="btn btn-ghost btn-sm">Juste le lien</button>
       </div>
       <button id="btnGoLobby" class="btn btn-gold btn-xl">Ouvrir le salon d'attente <i class="fa fa-arrow-right"></i></button>
     </div>
@@ -160,6 +236,22 @@
       <button id="btnLobbyShare" class="btn btn-ghost btn-sm"><i class="fa fa-link"></i> Lien</button>
     </header>
     <p id="lobbyStatus" class="card-sub"></p>
+
+    <div class="card" id="cardPerso">
+      <h2 class="card-title"><i class="fa fa-wand-magic-sparkles"></i> Questions des couples</h2>
+      <p id="persoSummary" class="card-sub"></p>
+      <div class="choice-grid" data-field="persoMode">
+        <button class="choice is-on" data-value="off">
+          <span class="choice-label">Questions Bibi Love</span>
+          <span class="choice-hint">La banque officielle, comme d'habitude.</span>
+        </button>
+        <button class="choice" data-value="mix">
+          <span class="choice-label">Avec leurs questions</span>
+          <span class="choice-hint">Leurs questions perso closent les manches 1 et 2.</span>
+        </button>
+      </div>
+    </div>
+
     <div id="lobbyCouples" class="lobby-couples"></div>
     <div class="row-btns row-btns-sticky">
       <button id="btnStartLive" class="btn btn-primary btn-xl"><i class="fa fa-clapperboard"></i> Lancer la partie</button>
@@ -184,6 +276,23 @@
       <div id="liveTurn" class="tv-turn"></div>
       <div id="liveQuestion" class="tv-question"></div>
       <div id="liveOptions" class="tv-options"></div>
+
+      <div id="liveTexte" class="tv-texte" hidden>
+        <div class="tv-texte-row">
+          <span class="tv-texte-label" id="liveTexteWho">Sa réponse</span>
+          <div id="liveTexteGiven" class="tv-texte-box is-given">En attente…</div>
+        </div>
+        <div class="tv-texte-row" id="liveTexteExpectedRow" hidden>
+          <span class="tv-texte-label" id="liveTexteAuthor">Ce qui était attendu</span>
+          <div id="liveTexteExpected" class="tv-texte-box is-expected"></div>
+        </div>
+        <div class="tv-texte-actions">
+          <button id="btnReveal" class="btn btn-gold btn-xl"><i class="fa fa-lock-open"></i> Dévoiler la réponse</button>
+          <button id="btnJugeOk" class="btn btn-ok" hidden><i class="fa fa-circle-check"></i> Ça colle</button>
+          <button id="btnJugeKo" class="btn btn-danger" hidden><i class="fa fa-circle-xmark"></i> Raté</button>
+        </div>
+      </div>
+
       <div id="liveVerdict" class="tv-verdict" hidden></div>
       <div id="liveTimer" class="tv-timer" hidden><i class="fa fa-stopwatch"></i> <span id="liveTimerNum">45</span></div>
     </div>
@@ -223,6 +332,20 @@
         <input id="inputName" class="input" maxlength="18" placeholder="Ash" autocomplete="given-name">
       </label>
       <div class="field">
+        <span class="field-label">On parle de toi au…</span>
+        <div id="joinGender" class="choice-grid choice-grid-3">
+          <button class="choice choice-mini" data-gender="f">
+            <span class="choice-label">Féminin</span><span class="choice-hint">elle</span>
+          </button>
+          <button class="choice choice-mini" data-gender="h">
+            <span class="choice-label">Masculin</span><span class="choice-hint">il</span>
+          </button>
+          <button class="choice choice-mini" data-gender="n">
+            <span class="choice-label">Neutre</span><span class="choice-hint">sans accord</span>
+          </button>
+        </div>
+      </div>
+      <div class="field">
         <span class="field-label">Ton couple</span>
         <div id="joinCouples" class="choice-grid"></div>
       </div>
@@ -245,6 +368,7 @@
     </div>
     <footer class="quiz-foot">
       <button id="btnQuizPrev" class="btn btn-ghost btn-sm"><i class="fa fa-arrow-left"></i> Précédent</button>
+      <button id="btnQuizHub" class="btn btn-ghost btn-sm" title="Revenir au tableau de bord"><i class="fa fa-xmark"></i></button>
       <span class="quiz-hint">Réponds pour toi, sincèrement. Ton/ta partenaire devra deviner.</span>
     </footer>
   </div>
@@ -253,15 +377,155 @@
 <!-- ═══════════════ JOUEUR : TERMINÉ ═══════════════ -->
 <section id="screen-done" class="screen">
   <div class="wrap">
-    <div class="center-stack">
-      <div class="pulse-heart big"><i class="fa fa-heart"></i></div>
-      <h1 class="podium-title">C'est envoyé !</h1>
-      <p id="doneLine" class="card-sub"></p>
-      <div id="doneRecap" class="done-recap"></div>
-      <button id="btnDoneEdit" class="btn btn-ghost">Modifier mes réponses</button>
+    <div class="logo logo-md"><span class="logo-heart"><i class="fa fa-heart"></i></span><span class="logo-word">Bibi&nbsp;Love</span></div>
+    <h1 id="doneTitle" class="hub-title">Deux choses à préparer</h1>
+    <p id="doneLine" class="card-sub hub-line"></p>
+
+    <div class="card hub-card" id="hubQuiz">
+      <div class="hub-head">
+        <span class="hub-icon"><i class="fa fa-comment-dots"></i></span>
+        <div class="hub-head-main">
+          <h2 class="card-title">Mon questionnaire</h2>
+          <p id="hubQuizState" class="hub-state"></p>
+        </div>
+        <span id="hubQuizCheck" class="hub-check" hidden><i class="fa fa-circle-check"></i></span>
+      </div>
+      <div class="progress"><div id="hubQuizBar" class="progress-fill"></div></div>
+      <button id="btnDoneEdit" class="btn btn-primary btn-xl">Continuer</button>
+    </div>
+
+    <div class="card hub-card" id="hubPerso">
+      <div class="hub-head">
+        <span class="hub-icon"><i class="fa fa-wand-magic-sparkles"></i></span>
+        <div class="hub-head-main">
+          <h2 class="card-title">Mes questions à moi</h2>
+          <p id="hubPersoState" class="hub-state"></p>
+        </div>
+        <span id="hubPersoCheck" class="hub-check" hidden><i class="fa fa-circle-check"></i></span>
+      </div>
+      <p class="card-sub">Des questions que tu écris toi-même, avec la réponse que tu attends.
+        C'est l'animateur qui tranchera à l'écran.</p>
+      <button id="btnGoCustom" class="btn btn-gold btn-xl"><i class="fa fa-wand-magic-sparkles"></i> Écrire mes questions</button>
+    </div>
+
+    <p id="doneRecap" class="mini-note"></p>
+  </div>
+</section>
+
+<!-- ═══════════════ JOUEUR : QUESTIONS PERSONNALISÉES ═══════════════ -->
+<section id="screen-custom" class="screen">
+  <div class="wrap">
+    <header class="bar">
+      <button id="btnCustomBack" class="btn btn-back" aria-label="Retour"><i class="fa fa-arrow-left"></i></button>
+      <h1 class="bar-title">Mes questions</h1>
+      <span id="customCount" class="mono"></span>
+    </header>
+
+    <p id="customIntro" class="card-sub"></p>
+
+    <div id="customList" class="custom-list"></div>
+
+    <div class="card" id="customForm">
+      <h2 class="card-title" id="customFormTitle">Nouvelle question</h2>
+      <label class="field">
+        <span class="field-label">Ta question</span>
+        <textarea id="customQ" class="input custom-q" maxlength="140" rows="2"
+          placeholder="Qu'est-ce que je commande toujours au restaurant ?"></textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">La bonne réponse — celle que tu attends</span>
+        <textarea id="customA" class="input custom-q" maxlength="120" rows="2"
+          placeholder="Un burger, systématiquement"></textarea>
+        <span class="field-hint">Personne ne la verra avant que l'animateur ne la dévoile à l'écran.</span>
+      </label>
+      <div class="row-btns">
+        <button id="btnCustomCancel" class="btn btn-ghost" hidden>Annuler</button>
+        <button id="btnCustomSave" class="btn btn-primary btn-xl">Ajouter la question</button>
+      </div>
+    </div>
+
+    <div class="card idees" id="customIdeas">
+      <h2 class="card-title"><i class="fa fa-comment-dots"></i> Boîte à idées</h2>
+      <p class="card-sub">En panne d'inspiration ? Touche une amorce pour la reprendre.</p>
+      <div id="ideasList" class="idees-list"></div>
+      <button id="btnIdeasMore" class="btn btn-ghost btn-sm"><i class="fa fa-rotate-right"></i> Autres idées</button>
+    </div>
+
+    <button id="btnCustomDone" class="btn btn-gold btn-xl">C'est bon pour moi <i class="fa fa-arrow-right"></i></button>
+  </div>
+</section>
+
+<!-- ═══════════════ JOUEUR : MANETTE LIVE ═══════════════ -->
+<section id="screen-play" class="screen">
+  <div class="play">
+    <header class="play-head">
+      <span id="playRound" class="play-round"></span>
+      <span id="playScore" class="play-score"></span>
+    </header>
+
+    <div class="play-body">
+      <div id="playWait" class="play-wait">
+        <div class="pulse-heart"><i class="fa fa-heart"></i></div>
+        <p id="playWaitTitle" class="play-wait-title">La partie va commencer</p>
+        <p id="playWaitLine" class="play-wait-line">Regarde l'écran de l'animateur.</p>
+      </div>
+
+      <div id="playTurn" hidden>
+        <span id="playWho" class="play-who"></span>
+        <h2 id="playQuestion" class="play-question"></h2>
+        <div id="playOptions" class="play-options"></div>
+        <div id="playTexte" class="play-texte" hidden>
+          <textarea id="playTexteInput" class="input custom-q" maxlength="120" rows="2"
+            placeholder="Écris ta réponse…"></textarea>
+          <button id="btnPlaySendTexte" class="btn btn-primary btn-xl">Envoyer ma réponse</button>
+        </div>
+        <p id="playSpectate" class="play-spectate" hidden></p>
+      </div>
+
+      <div id="playResult" class="play-result" hidden>
+        <div id="playResultIcon" class="play-result-icon"></div>
+        <p id="playResultTitle" class="play-result-title"></p>
+        <div id="playResultAnswers" class="play-answers" hidden></div>
+        <p id="playResultLine" class="play-result-line"></p>
+      </div>
     </div>
   </div>
 </section>
+
+<!-- ═══════════════ JOUEUR : RÉCAP FINAL ═══════════════ -->
+<section id="screen-recap" class="screen">
+  <div class="wrap">
+    <div class="center-stack">
+      <div id="recapIcon" class="podium-emoji"><i class="fa fa-trophy"></i></div>
+      <h1 id="recapTitle" class="podium-title">—</h1>
+      <p id="recapLine" class="podium-line"></p>
+      <div id="recapBoard" class="podium-board"></div>
+      <p class="mini-note">Encore une partie ? L'animateur relance depuis son écran.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ PAYWALL ═══════════════ -->
+<div id="paywall" class="modal">
+  <div class="modal-box paywall-box">
+    <div class="paywall-crown"><i class="fa fa-crown"></i></div>
+    <h2 class="paywall-title">Bibi Love Complet</h2>
+    <p id="paywallWhy" class="paywall-why"></p>
+    <ul class="paywall-list">
+      <li><i class="fa fa-circle-check"></i> <strong>377 questions</strong> au lieu de 60 — de quoi tenir des dizaines de soirées</li>
+      <li><i class="fa fa-circle-check"></i> Les tons <strong>Intime</strong> et <strong>Sans filtre</strong></li>
+      <li><i class="fa fa-circle-check"></i> Parties de <strong>45 min et 1 h</strong></li>
+      <li><i class="fa fa-circle-check"></i> Tournois jusqu'à <strong>4 couples</strong></li>
+    </ul>
+    <div class="paywall-price"><strong id="paywallPrice">4,99 €</strong> une seule fois, à vie</div>
+    <p class="paywall-note">C'est l'organisateur qui paie. Tous les invités en profitent, sans rien installer.</p>
+    <div class="modal-actions">
+      <button id="paywallCancel" class="btn btn-ghost">Plus tard</button>
+      <button id="paywallBuy" class="btn btn-gold">Débloquer</button>
+    </div>
+    <button id="paywallRestore" class="link-btn">J'ai déjà acheté sur cet appareil</button>
+  </div>
+</div>
 
 <!-- ═══════════════ MODALE MAISON ═══════════════ -->
 <div id="confirmModal" class="modal">

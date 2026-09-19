@@ -11,8 +11,12 @@ import {
 import { db, uid } from './firebase.js';
 import { makeCode } from './util.js';
 import { drawQuestions, questionCount } from './game.js';
+import { limitePool, maxCustom } from './plan.js';
 
 const gameRef    = code => doc(db, 'games', code);
+const guessesRef = code => collection(db, 'games', code, 'guesses');
+const guessRef   = (code, u) => doc(db, 'games', code, 'guesses', u);
+const customRef  = (code, u) => doc(db, 'games', code, 'custom', u);
 const playersRef = code => collection(db, 'games', code, 'players');
 const playerRef  = (code, u) => doc(db, 'games', code, 'players', u);
 const answersRef = (code, u) => doc(db, 'games', code, 'answers', u);
@@ -53,7 +57,8 @@ export async function createGame(cfg) {
     code = makeCode();
   }
   const questionIds = drawQuestions({
-    spice: cfg.spice, durationMin: cfg.durationMin, exclude: usedQuestions()
+    spice: cfg.spice, durationMin: cfg.durationMin,
+    exclude: usedQuestions(), poolFilter: limitePool
   });
   markUsed(questionIds);
 
@@ -68,7 +73,12 @@ export async function createGame(cfg) {
     mode: cfg.mode, spice: cfg.spice, pairing: cfg.pairing,
     durationMin: cfg.durationMin, perRound,
     couples, questionIds,
+    // Figé à la création, depuis le plan de l'HÔTE : c'est lui qui paie, ses invités
+    // en profitent sans avoir rien acheté. Lire le plan sur l'appareil de l'invité
+    // donnerait la limite gratuite à tout le monde.
+    maxCustom: maxCustom(),
     live: { round: 1, qIdx: 0, coupleIdx: 0, phase: 'idle', guess: null },
+    bc: null,
     finalistId: null, finalResult: null
   };
   await setDoc(gameRef(code), data);
@@ -103,11 +113,55 @@ export async function deleteGame(code) {
 
 /* ── Côté joueur ───────────────────────────────────────────────────────── */
 
-export async function joinGame(code, { name, coupleId, slot }) {
+export async function joinGame(code, { name, coupleId, slot, gender }) {
   await setDoc(playerRef(code, uid()), {
-    name, coupleId, slot, done: false, answered: 0, joinedAt: serverTimestamp()
+    name, coupleId, slot, gender: gender || 'n',
+    done: false, answered: 0, joinedAt: serverTimestamp()
   }, { merge: true });
   return uid();
+}
+
+/* ── Manette : le devineur renvoie son choix depuis son téléphone ───────── */
+
+/**
+ * Écrit la réponse du joueur : `token` pour une QCM, `text` pour une réponse libre.
+ * `seq` permet à l'hôte d'ignorer une réponse périmée.
+ */
+export async function sendGuess(code, { seq, token = null, text = null }) {
+  await setDoc(guessRef(code, uid()), { seq, token, text, at: serverTimestamp() });
+}
+
+/* ── Questions personnalisées ───────────────────────────────────────────── */
+
+/**
+ * Enregistre les questions écrites par un joueur pour son/sa partenaire.
+ * Le compteur est dupliqué sur `players/{uid}` : le salon affiche l'avancement
+ * sans que l'hôte ait à lire le contenu des questions, qui reste secret jusqu'au jeu.
+ */
+export async function saveCustom(code, items) {
+  await setDoc(customRef(code, uid()), { items, updatedAt: serverTimestamp() });
+  await setDoc(playerRef(code, uid()), { customCount: items.length }, { merge: true });
+}
+
+export async function myCustom(code) {
+  const s = await getDoc(customRef(code, uid()));
+  return s.exists() ? (s.data().items || []) : [];
+}
+
+/** Réservé à l'hôte, comme les réponses. */
+export async function allCustom(code, players) {
+  const out = {};
+  await Promise.all(players.map(async p => {
+    const s = await getDoc(customRef(code, p.uid));
+    out[p.uid] = s.exists() ? (s.data().items || []) : [];
+  }));
+  return out;
+}
+
+/** Côté hôte : écoute tous les choix envoyés par les téléphones. */
+export function watchGuesses(code, cb) {
+  return onSnapshot(guessesRef(code), s =>
+    cb(s.docs.map(d => ({ uid: d.id, ...d.data() }))));
 }
 
 export async function myPlayer(code) {
