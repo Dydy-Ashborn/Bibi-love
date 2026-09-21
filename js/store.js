@@ -113,9 +113,10 @@ export async function deleteGame(code) {
 
 /* ── Côté joueur ───────────────────────────────────────────────────────── */
 
-export async function joinGame(code, { name, coupleId, slot, gender }) {
+export async function joinGame(code, { name, coupleId, slot, gender, adultConsent = false }) {
   await setDoc(playerRef(code, uid()), {
     name, coupleId, slot, gender: gender || 'n',
+    adultConsentAt: adultConsent ? serverTimestamp() : null,
     done: false, answered: 0, joinedAt: serverTimestamp()
   }, { merge: true });
   return uid();

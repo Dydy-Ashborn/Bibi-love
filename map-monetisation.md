@@ -51,18 +51,15 @@ Les options payantes restent **visibles et cliquables**, avec un cadenas. Le cli
 l'offre. Une option grisée et morte ne donne envie de rien ; une option qu'on touche et
 qui explique ce qu'elle débloque, si.
 
-## Ce qu'il reste à brancher : Stripe
+## Stripe
 
-Le flux d'achat n'est pas fonctionnel : il manque la seule brique qui exige un serveur.
+Le Payment Link est renseigné dans `js/plan.js` et le `uid` anonyme de l'hôte est passé
+en `client_reference_id`. La Cloud Function `stripeWebhook` vérifie la signature, le
+produit payé et les paiements différés avant d'écrire `hosts/{uid}.premium = true` via
+l'Admin SDK. Le traitement est dédupliqué par identifiant d'événement.
 
-1. Créer un **Payment Link** Stripe en mode `payment` (achat unique, pas d'abonnement)
-   et renseigner `LIEN_PAIEMENT` dans `js/plan.js`.
-2. Passer le `uid` anonyme de l'hôte en `client_reference_id` sur le lien
-   (`?client_reference_id=<uid>`) — c'est ce qui rattache le paiement au bon compte.
-3. Déployer **une** Cloud Function webhook sur `checkout.session.completed` qui écrit
-   `hosts/{client_reference_id}.premium = true` via l'Admin SDK.
-4. Secrets (clé secrète, secret du webhook) dans `functions/.env`, jamais
-   `functions:config:set` (déprécié).
+La procédure de secrets, déploiement, configuration Stripe et recette est détaillée dans
+[`STRIPE_WEBHOOK.md`](STRIPE_WEBHOOK.md).
 
 **Cette étape revient sur la décision « pas de Cloud Functions »** prise au départ (voir
 `decisions.md`). C'est assumé : vérifier un paiement côté client est impossible, et les

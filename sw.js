@@ -9,14 +9,14 @@
  * Les polices et images, elles, restent en cache-first : leur nom ne change pas mais
  * leur contenu non plus.
  */
-const VERSION = 'v16';
+const VERSION = 'v19';
 const CACHE   = 'bibi-love-' + VERSION;
 
 const SHELL = [
   './', './index.html', './css/style.css',
   './js/app.js', './js/host.js', './js/player.js', './js/store.js',
   './js/game.js', './js/util.js', './js/firebase.js', './js/config.js',
-  './js/plan.js', './js/live.js',
+  './js/plan.js', './js/legal.js', './js/live.js',
   './js/data/questions.js', './js/data/verdicts.js', './js/data/idees.js',
   './manifest.webmanifest', './icons/icon.svg',
   './vendor/fontawesome/fa.css', './vendor/fontawesome/fa-solid-subset.woff2'

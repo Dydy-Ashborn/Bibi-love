@@ -107,6 +107,11 @@ function syncCreateUI() {
 /* ══════════════ PAYWALL ══════════════ */
 export function openPaywall(why) {
   $('#paywallWhy').textContent = why || "Débloque tout le jeu, une bonne fois pour toutes.";
+  const consent = $('#paywallConsent');
+  if (consent) {
+    consent.checked = false;
+    consent.dispatchEvent(new Event('change'));
+  }
   $('#paywall').classList.add('is-open');
   sfx.tap();
 }
@@ -317,6 +322,9 @@ function renderLobby() {
                 : g.status === 'finished' ? iconHtml('rotate-right') + ' Relancer une partie'
                 : iconHtml('clapperboard') + ' Lancer la partie';
   btn.disabled = H.players.length < 2;
+  // Partie en cours : en plus de « Reprendre », on peut repartir de zéro ou l'arrêter
+  // (classement sur les scores actuels). Sans ça, la seule sortie était de supprimer.
+  $('#lobbyLiveActions').hidden = !resumable;
 }
 
 /* ── Fiche joueur : ce qu'il a rempli ─────────────────────────────────────
@@ -747,6 +755,8 @@ function renderLive() {
   H.phase = 'question'; H.picked = null;
   H.step = { truth, couple, step, kind, expected, sourceName, guesserName, opts };
   $('#btnLiveNext').hidden = H.round === 'final' || texte;
+  $('#btnCorriger').hidden = true;
+  H.verdict = null;
   $('#btnLiveNext').innerHTML = 'Passer ' + iconHtml('arrow-right');
 
   const totalQ = H.round === 'final' ? RULES.FINAL_QUESTIONS : tailleManche();
@@ -909,21 +919,59 @@ function appliquerVerdict(ok, couple, step, extra = {}) {
     H.stats.correct++;
     H.scores[couple.id] = (H.scores[couple.id] || 0) + pts;
     sfx.good(); burst('hearts', 26);
-    v.className = 'tv-verdict ok';
-    v.innerHTML = `Dans le mille ! <span class="pts">+${pts}</span><small>${punch}</small>`;
   } else {
     sfx.bad(); shake($('#liveStageWrap'));
-    v.className = 'tv-verdict ko';
-    v.innerHTML = (extra.truth == null && extra.expected == null)
-      ? `Aucune réponse enregistrée<small>${pioche(REACT_VIDE, 'vide')}</small>`
-      : `Perdu !<small>${punch}</small>`;
   }
+  // Mémorisé pour une correction éventuelle (mauvais clic de l'animateur) : tant qu'on
+  // n'est pas passé à la question suivante, le verdict peut être retourné.
+  H.verdict = { ok, coupleId: couple.id, pts, extra };
+  afficherVerdict(ok, pts, punch, extra);
   renderScores(ok ? couple.id : null);
   $('#btnLiveNext').hidden = false;
   $('#btnLiveNext').innerHTML = 'Suivant ' + iconHtml('arrow-right');
   publishReveal(ok, ok ? pts : 0, extra);
   persistLive();
 }
+
+/** Bandeau de verdict + bouton de correction — commun au verdict initial et corrigé. */
+function afficherVerdict(ok, pts, punch, extra = {}) {
+  const v = $('#liveVerdict');
+  v.hidden = false;
+  v.className = 'tv-verdict ' + (ok ? 'ok' : 'ko');
+  v.innerHTML = ok
+    ? `Dans le mille ! <span class="pts">+${pts}</span><small>${punch}</small>`
+    : (extra.truth == null && extra.expected == null)
+      ? `Aucune réponse enregistrée<small>${pioche(REACT_VIDE, 'vide')}</small>`
+      : `Perdu !<small>${punch}</small>`;
+  $('#liveTexte').classList.toggle('is-ok', ok);
+  $('#liveTexte').classList.toggle('is-ko', !ok);
+  const c = $('#btnCorriger');
+  c.hidden = false;
+  c.innerHTML = iconHtml('rotate-right') + (ok ? ' Erreur : compter faux' : ' Erreur : compter juste');
+}
+
+/**
+ * Retourne le dernier verdict des manches (mauvais clic de l'animateur).
+ * Score, stats, affichage et téléphones sont corrigés ensemble ; la correction est
+ * sauvegardée comme n'importe quelle transition. Pas en finale : elle enchaîne toute
+ * seule sous chrono, il n'y a pas de moment où revenir en arrière.
+ */
+function corrigerVerdict() {
+  const d = H.verdict;
+  if (!d || H.round === 'final' || H.phase !== 'reveal') return;
+  const ok = !d.ok;
+  H.scores[d.coupleId] = (H.scores[d.coupleId] || 0) + (ok ? d.pts : -d.pts);
+  H.stats.correct = Math.max(0, H.stats.correct + (ok ? 1 : -1));
+  d.ok = ok;
+  const punch = pioche(ok ? REACT_GOOD : REACT_BAD, ok ? 'good' : 'bad');
+  if (ok) { sfx.good(); burst('hearts', 18); } else { sfx.bad(); }
+  afficherVerdict(ok, d.pts, punch, d.extra);
+  renderScores(ok ? d.coupleId : null);
+  publishReveal(ok, ok ? d.pts : 0, d.extra);
+  persistLive();
+}
+
+$('#btnCorriger')?.addEventListener('click', corrigerVerdict);
 
 /** Diffuse le résultat aux téléphones pour qu'ils jouent la même animation. */
 function publishReveal(ok, pts, extra = {}) {
@@ -970,7 +1018,7 @@ function finirSansFinale() {
   H.round = 'final';
   H.final = { idx: 0, correct: 0, errors: 0, left: 0, over: false };
   persistLive();
-  endFinal(true, 'Toutes vos questions ont été jouées.');
+  endFinal(true, 'Toutes vos questions ont été jouées.', { mention: 'partie perso complète' });
 }
 
 /* ── Finale chronométrée ──────────────────────────────────────── */
@@ -1009,7 +1057,7 @@ function nextFinal() {
   persistLive();
 }
 
-function endFinal(win, why) {
+function endFinal(win, why, opts = {}) {
   if (H.final.over) return;
   H.final.over = true;
   clearInterval(H.timerId);
@@ -1017,11 +1065,11 @@ function endFinal(win, why) {
   // ne doit pas plomber le ratio de complicité avec 4 questions jamais vues.
   H.stats.asked += H.final.correct + H.final.errors;
   H.stats.correct += H.final.correct;
-  showPodium(win, why);
+  showPodium(win, why, opts);
 }
 
 /* ══════════════ PODIUM ══════════════ */
-function showPodium(finalWin, why) {
+function showPodium(finalWin, why, opts = {}) {
   const g = H.game;
   const ranked = [...g.couples].sort((a, b) => (H.scores[b.id] || 0) - (H.scores[a.id] || 0));
 
@@ -1043,7 +1091,7 @@ function showPodium(finalWin, why) {
     $('#podiumEmoji').innerHTML = iconHtml(finalWin ? r.icon : 'heart-crack');
     $('#podiumTitle').textContent = r.title;
     $('#podiumLine').innerHTML =
-      `${r.line}<br><small>${H.stats.correct}/${H.stats.asked} bonnes réponses · finale ${finalWin ? 'réussie' : 'ratée'} — ${why}</small>`;
+      `${r.line}<br><small>${H.stats.correct}/${H.stats.asked} bonnes réponses · ${opts.mention || ('finale ' + (finalWin ? 'réussie' : 'ratée'))} — ${why}</small>`;
   } else {
     $('#podiumEmoji').innerHTML = iconHtml(finalWin ? 'trophy' : 'heart-crack');
     $('#podiumTitle').textContent = finalWin ? H.finalist.name : 'Finale perdue';
@@ -1064,7 +1112,8 @@ function showPodium(finalWin, why) {
   }));
 
   patchGame(H.code, { status: 'finished', finalistId: H.finalist?.id || null,
-                      finalResult: { win: finalWin, correct: H.final.correct, errors: H.final.errors } })
+                      finalResult: { win: finalWin, correct: H.final?.correct || 0, errors: H.final?.errors || 0,
+                                     arretee: !!opts.arretee } })
     .catch(() => {});
   showScreen('screen-podium');
 }
@@ -1094,6 +1143,38 @@ $('#paywallCancel')?.addEventListener('click', () => $('#paywall').classList.rem
 $('#paywall')?.addEventListener('click', e => {
   if (e.target === $('#paywall')) $('#paywall').classList.remove('is-open');
 });
+
+/* ══════════════ PARTIE EN COURS : RECOMMENCER / ARRÊTER ══════════════ */
+
+$('#btnRestartGame')?.addEventListener('click', () => {
+  showConfirmModal(
+    "Recommencer à zéro ? Les scores repartent de 0, avec les mêmes joueurs et les mêmes questions.",
+    () => startLive(false), { okLabel: 'Recommencer', danger: true });
+});
+
+$('#btnStopGame')?.addEventListener('click', () => {
+  showConfirmModal(
+    "Arrêter la partie maintenant ? Le classement est établi sur les scores actuels et envoyé aux téléphones.",
+    () => arreterPartie(), { okLabel: 'Arrêter la partie', danger: true });
+});
+
+/**
+ * Termine une partie en cours depuis le salon, sur les scores sauvegardés.
+ * Passe par le podium normal : même classement, mêmes punchlines, même diffusion aux
+ * téléphones — une partie arrêtée ne doit pas finir en queue de poisson pour la table.
+ */
+function arreterPartie() {
+  const g = H.game; if (!g) return;
+  const L = g.live || {};
+  clearInterval(H.timerId);
+  H.scores = Object.assign({}, L.scores);
+  g.couples.forEach(c => { if (H.scores[c.id] == null) H.scores[c.id] = 0; });
+  H.stats = Object.assign({ asked: 0, correct: 0 }, L.stats);
+  H.finalist = [...g.couples].sort((a, b) => (H.scores[b.id] || 0) - (H.scores[a.id] || 0))[0];
+  H.round = 'final';
+  H.final = { idx: 0, correct: 0, errors: 0, left: 0, over: false };
+  endFinal(true, 'Partie arrêtée avant la fin.', { mention: 'partie arrêtée', arretee: true });
+}
 
 /* ══════════════ FICHE JOUEUR ══════════════ */
 const fermerFiche = () => $('#peekModal')?.classList.remove('is-open');

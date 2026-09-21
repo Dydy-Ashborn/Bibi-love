@@ -63,6 +63,10 @@ function renderJoin() {
         `Si ce n'est pas ce à quoi tu t'attendais, ferme cette page et préviens l'organisateur.</span>`
       : '');
 
+  const adultConsentWrap = $('#adultConsentWrap');
+  adultConsentWrap.hidden = !sp.adult;
+  if (!sp.adult) $('#adultConsent').checked = false;
+
   const nameInput = $('#inputName');
   if (!nameInput.value) nameInput.value = localStorage.getItem(LS_NAME) || '';
 
@@ -109,8 +113,10 @@ function renderJoin() {
   avis.innerHTML = iconHtml('circle-info') +
     " Tous les couples sont complets. Demande à l'organisateur d'ouvrir une place " +
     "depuis son salon d'attente — le lien restera le même.";
-  $('#btnJoinConfirm').disabled = libres === 0;
+  $('#btnJoinConfirm').disabled = libres === 0 || (sp.adult && !$('#adultConsent').checked);
 }
+
+$('#adultConsent')?.addEventListener('change', renderJoin);
 
 $('#joinGender')?.addEventListener('click', e => {
   const btn = e.target.closest('.choice');
@@ -125,12 +131,20 @@ $('#btnJoinConfirm')?.addEventListener('click', async () => {
   if (name.length < 2) { toast('Il me faut ton prénom.', 'err'); return; }
   if (!state.gender) { toast('Choisis comment on parle de toi.', 'err'); return; }
   if (!state.pickedCouple) { toast('Choisis ton couple.', 'err'); return; }
+  const adult = Boolean((SPICE[state.game?.spice] || SPICE[1]).adult);
+  if (adult && !$('#adultConsent').checked) {
+    toast('Ton consentement explicite est nécessaire pour ce questionnaire 18+.', 'err');
+    return;
+  }
   const taken = state.players.filter(p => p.coupleId === state.pickedCouple);
   if (taken.length >= 2) { toast('Ce couple est complet.', 'err'); return; }
   const slot = taken.length === 0 ? 'A' : (taken[0].slot === 'A' ? 'B' : 'A');
 
   localStorage.setItem(LS_NAME, name);
-  await joinGame(state.code, { name, coupleId: state.pickedCouple, slot, gender: state.gender });
+  await joinGame(state.code, {
+    name, coupleId: state.pickedCouple, slot, gender: state.gender,
+    adultConsent: adult
+  });
   state.me = await myPlayer(state.code);
   sfx.good(); burst('hearts', 24);
   openQuizOrDone();

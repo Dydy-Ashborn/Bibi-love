@@ -216,10 +216,52 @@ qui arbitre à l'écran.
 - La limite (3 gratuit / 12 complet) vient de `game.maxCustom`, figé à la création depuis
   le plan de l'**hôte**. La lire sur l'appareil de l'invité donnerait la limite gratuite à
   tout le monde alors que l'organisateur a payé pour la table — bug trouvé au banc de test.
+### Corriger un verdict (`corrigerVerdict`)
+
+Après chaque verdict des manches 1 à 3 (réponse libre arbitrée **ou** QCM), le pied du
+plateau affiche `#btnCorriger` : « Erreur : compter faux » / « Erreur : compter juste ».
+Il retourne le verdict autant de fois que nécessaire tant qu'on n'est pas passé à la
+question suivante (`renderLive` le masque et remet `H.verdict` à `null`).
+
+- La correction touche **tout** ce que le verdict avait touché : score du couple, stats
+  de complicité, bandeau, bordure de la réponse libre, et **rediffusion** aux téléphones
+  (`publishReveal`) — un téléphone réaffiche le résultat à chaque diffusion REVEAL, donc
+  le joueur voit « Bonne réponse » devenir « Mauvaise réponse ».
+- Sauvegardée par `persistLive()` comme toute transition : une reprise de partie
+  repart du score corrigé.
+- `afficherVerdict()` est le seul endroit qui dessine le bandeau : verdict initial et
+  verdict corrigé ne peuvent pas diverger.
+- **Pas en finale** : elle enchaîne seule 900 ms après chaque réponse, sous chrono.
+- Pas de toast de confirmation : il s'affichait pile par-dessus le bouton pendant 2 s,
+  empêchant de recliquer ; le changement de verdict se voit déjà en grand.
+
+### Partie en cours : reprendre, recommencer, arrêter
+
+Quand une partie est reprenable, le salon affiche sous « Reprendre la partie » deux
+actions (`#lobbyLiveActions`), toutes deux derrière `showConfirmModal` :
+
+- **Recommencer à zéro** — `startLive(false)` : scores à 0, mêmes joueurs, mêmes
+  questions (en ton perso le plan est recalculé à l'identique).
+- **Arrêter la partie** — `arreterPartie()` : reconstitue scores et stats depuis
+  `games/{code}.live`, désigne le couple en tête et passe par le **podium normal**
+  (`endFinal` → `showPodium`), donc classement, punchlines et diffusion aux téléphones
+  identiques à une fin de partie. `finalResult.arretee` marque le cas.
+
+`showPodium(win, why, opts)` accepte `opts.mention`, qui remplace « finale réussie/ratée »
+dans le résumé du mode duo : une partie arrêtée ou une partie perso (sans finale) ne doit
+pas afficher le résultat d'une finale qui n'a pas eu lieu.
+
+Avant ça, la seule sortie d'une partie commencée était **Supprimer**, qui efface aussi
+les questionnaires et les questions écrites.
+
 ### Fiche joueur au salon (`ouvrirFiche`)
 
-Chaque place du salon est un **bouton** : le clic ouvre `#peekModal` et affiche, question
-par question, ce que le joueur a rempli. Ça répond à la seule question que l'hôte se pose
+Chaque place du salon est un **bouton** portant un libellé **« Voir »**, doublé d'une ligne
+d'aide sous le nom du couple : le clic ouvre `#peekModal` et affiche, question par question,
+ce que le joueur a rempli. L'affordance est explicite et non un simple curseur ou une icône
+discrète — sur mobile il n'y a pas de survol, et la première version (une icône ⓘ en bout de
+carte) n'a pas été comprise au banc d'essai : personne ne devine qu'une carte d'état est
+cliquable. Ça répond à la seule question que l'hôte se pose
 vraiment avant de lancer — « 5/19, mais lesquelles ? » — et permet de vérifier qu'un
 questionnaire n'a pas été bâclé.
 

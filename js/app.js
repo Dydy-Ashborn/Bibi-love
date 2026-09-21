@@ -7,6 +7,7 @@ import { refreshPremium, isPremium, diagPremium, resume as planResume,
 import { uid } from './firebase.js';
 import { copy, burst } from './util.js';
 import { enterJoin, leavePlayer } from './player.js';
+import { initLegal } from './legal.js';
 
 /* ── Routes ───────────────────────────────────────────────────────
    #/            accueil
@@ -16,6 +17,7 @@ import { enterJoin, leavePlayer } from './player.js';
    ───────────────────────────────────────────────────────────────── */
 async function route() {
   const hash = location.hash || '#/';
+  $('#paywall')?.classList.remove('is-open');
   leaveHost(); leavePlayer();
 
   if (hash.startsWith('#/j/')) {
@@ -30,6 +32,8 @@ async function route() {
   }
   if (hash === '#/create') { enterCreate(); return; }
   if (hash === '#/compte') { enterCompte(); return; }
+  if (hash === '#/cgv') { showScreen('screen-cgv'); return; }
+  if (hash === '#/cgu') { showScreen('screen-cgu'); return; }
 
   renderHistory();
   showScreen('screen-home');
@@ -91,12 +95,28 @@ $('#btnCompteCopy')?.addEventListener('click', async () => {
 
 /* ── Paywall : achat et restauration ─────────────────────────────────────── */
 $('#paywallPrice') && ($('#paywallPrice').textContent = PRIX);
-if (!LIEN_PAIEMENT && $('#paywallBuy')) {
+const paywallConsent = $('#paywallConsent');
+const paywallBuy = $('#paywallBuy');
+
+function syncPaywallBuy() {
+  if (!paywallBuy) return;
+  paywallBuy.disabled = !LIEN_PAIEMENT || !paywallConsent?.checked;
+  paywallBuy.textContent = LIEN_PAIEMENT ? 'Payer et débloquer' : 'Bientôt disponible';
+}
+
+paywallConsent?.addEventListener('change', syncPaywallBuy);
+syncPaywallBuy();
+
+if (!LIEN_PAIEMENT && paywallBuy) {
   $('#paywallBuy').disabled = true;
   $('#paywallBuy').textContent = 'Bientôt disponible';
 }
 
 $('#paywallBuy')?.addEventListener('click', () => {
+  if (!paywallConsent?.checked) {
+    toast('Confirme les conditions avant de continuer.', 'err');
+    return;
+  }
   const url = urlPaiement();
   if (!url) {
     toast("Le paiement n'est pas encore ouvert. Reviens bientôt !", 'err');
@@ -104,7 +124,10 @@ $('#paywallBuy')?.addEventListener('click', () => {
   }
   // On marque le départ vers Stripe : au retour, `verifierRetourPaiement()` saura
   // qu'il faut attendre le webhook au lieu d'afficher froidement « version gratuite ».
-  try { sessionStorage.setItem('bibi.achat', '1'); } catch {}
+  try {
+    sessionStorage.setItem('bibi.achat', '1');
+    sessionStorage.setItem('bibi.consentementAchat', new Date().toISOString());
+  } catch {}
   location.href = url;
 });
 
@@ -169,6 +192,8 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── Boot ─────────────────────────────────────────────────────────── */
+initLegal();
+
 (async function boot() {
   const t0 = Date.now();
   try {

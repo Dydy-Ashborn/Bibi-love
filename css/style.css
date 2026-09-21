@@ -257,6 +257,7 @@ button.slot:focus-visible{outline:2px solid var(--or-clair);outline-offset:2px}
   color:var(--or-clair);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:4px 10px;
   transition:background .15s,color .15s,border-color .15s}
 .lobby-hint{font-size:12px;color:var(--gris);margin:-4px 0 9px}
+.lobby-live-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;width:100%}
 .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;flex:0 0 auto;
   background:linear-gradient(180deg,var(--rouge-clair),var(--rouge-sombre));box-shadow:0 3px 10px rgba(255,31,69,.4)}
 .slot.is-empty .avatar{background:rgba(255,255,255,.12);box-shadow:none;color:var(--gris);font-size:14px}
@@ -447,6 +448,49 @@ button.slot:focus-visible{outline:2px solid var(--or-clair);outline-offset:2px}
 .paywall-note{font-size:12.5px;color:#7f88b8;line-height:1.45;margin-bottom:18px}
 .link-btn{background:none;border:0;color:var(--gris);font-family:var(--font);font-size:13px;
   text-decoration:underline;cursor:pointer;margin-top:14px;width:100%}
+
+/* ══════════════ Pages légales et consentement d'achat ══════════════ */
+.legal-links{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;
+  color:#7f88b8;font-size:12.5px}
+.legal-links a,.legal-page a{color:var(--or-clair);text-underline-offset:3px;
+  transition:color .2s ease}
+.legal-links a:hover,.legal-page a:hover{color:#fff}
+.legal-links a:focus-visible,.legal-page a:focus-visible{outline:2px solid var(--or);outline-offset:4px;border-radius:3px}
+.legal-head{align-items:flex-start;margin-bottom:8px}
+.legal-head>div{flex:1;min-width:0;padding-top:3px}
+.legal-head .bar-title{margin-top:3px;line-height:1.12}
+.legal-version{font-size:12px;color:#7f88b8;margin:0 0 16px 58px}
+.legal-alert{padding:14px 16px;margin-bottom:18px;border:1px solid rgba(255,197,61,.4);
+  border-radius:15px;background:rgba(255,197,61,.11);color:var(--or-clair);font-size:13px;line-height:1.5}
+.legal-alert strong{color:var(--or)}
+.legal-alert code{font-family:ui-monospace,Menlo,monospace;color:#fff}
+.legal-intro{font-size:17px;line-height:1.6;padding:20px 22px;margin-bottom:14px;border-radius:18px;
+  background:linear-gradient(135deg,rgba(255,197,61,.13),rgba(255,255,255,.04));
+  border:1px solid rgba(255,197,61,.25)}
+.legal-sections{display:flex;flex-direction:column;gap:10px}
+.legal-sections>section{padding:20px 22px;border-radius:18px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09)}
+.legal-sections h2{font-size:17px;color:var(--or-clair);line-height:1.3;margin-bottom:9px}
+.legal-sections p{color:#d8dcf2;font-size:14.5px;line-height:1.65}
+.legal-sections p+p{margin-top:10px}
+.legal-model{padding:14px;border-radius:12px;background:rgba(0,0,0,.22);border-left:3px solid var(--or)}
+.paywall-consent{display:flex;gap:11px;text-align:left;align-items:flex-start;margin:0 0 18px;
+  padding:12px 13px;border:1px solid rgba(255,255,255,.12);border-radius:13px;background:rgba(0,0,0,.18);
+  color:#d8dcf2;font-size:12.5px;line-height:1.45;cursor:pointer}
+.paywall-consent input{width:18px;height:18px;flex:0 0 auto;margin-top:1px;accent-color:var(--or)}
+.paywall-consent a{color:var(--or-clair);text-underline-offset:2px}
+.paywall-consent:focus-within{border-color:var(--or);box-shadow:0 0 0 3px rgba(255,197,61,.13)}
+.adult-consent{margin-top:4px;margin-bottom:16px;border-color:rgba(255,31,69,.34);
+  background:rgba(255,31,69,.1)}
+.adult-consent:focus-within{border-color:var(--rouge-clair);box-shadow:0 0 0 3px rgba(255,31,69,.13)}
+.btn:disabled{cursor:not-allowed;filter:grayscale(.45);opacity:.5;box-shadow:none}
+
+@media(max-width:520px){
+  .legal-page{padding-inline:15px}
+  .legal-head .bar-title{font-size:20px}
+  .legal-version{margin-left:52px}
+  .legal-intro,.legal-sections>section{padding:17px}
+}
 
 /* ══════════════ Manette joueur ══════════════ */
 .play{min-height:100dvh;display:flex;flex-direction:column;max-width:640px;margin:0 auto;padding:18px 18px 24px}

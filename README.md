@@ -5,7 +5,8 @@ répondent en amont, chacun de son côté**, puis l'animateur lance la partie su
 écran maître et le conjoint doit deviner. Trois manches, une finale chronométrée.
 
 - **Stack** : HTML/CSS/JS vanilla (modules ES), aucune dépendance de build.
-- **Backend** : Firebase — Firestore + Auth anonyme + Hosting. Pas de Cloud Functions.
+- **Backend** : Firebase — Firestore + Auth anonyme + Hosting, avec une Cloud Function
+  dédiée au webhook Stripe.
 - **Offline** : service worker (coque uniquement, jamais les données Firestore).
 
 ## Démarrage

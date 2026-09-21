@@ -2,6 +2,7 @@
   "name": "bibi-love-functions",
   "description": "Webhook Stripe de Bibi Love",
   "main": "index.js",
+  "scripts": { "test": "node --test" },
   "engines": { "node": "20" },
   "dependencies": {
     "firebase-admin": "^12.6.0",
