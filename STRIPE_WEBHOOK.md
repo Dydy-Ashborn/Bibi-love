@@ -3,6 +3,7 @@
 Le code est dans `functions/index.js`. Il débloque `hosts/{uid}.premium` uniquement pour
 un paiement unique de **4,99 EUR** signé par Stripe. Les événements sont traités dans une
 transaction Firestore et dédupliqués dans `stripeCheckoutSessions/{sessionId}`.
+Le runtime serveur utilisé est Node.js 22.
 
 ## 1. Vérifier le Payment Link
 
@@ -15,11 +16,15 @@ Dans Stripe, le Payment Link doit être en mode paiement unique, à 4,99 EUR. Co
   droit de rétractation après activation.
 
 Relever l'identifiant API du lien (`plink_…`, différent de l'URL `buy.stripe.com`). Dans
-`functions/.env`, ajouter sans toucher aux secrets existants :
+`functions/.env`, seule cette variable non secrète peut être ajoutée :
 
 ```dotenv
 STRIPE_PAYMENT_LINK_ID=plink_xxxxxxxxxxxxx
 ```
+
+Ne jamais placer `STRIPE_SECRET_KEY` ni `STRIPE_WEBHOOK_SECRET` dans ce fichier : ces
+deux valeurs sont fournies exclusivement par Secret Manager. Les définir aussi dans
+`.env` empêche Cloud Run de déployer la fonction.
 
 Cette vérification optionnelle devient active dès que la valeur est renseignée. Le
 montant, la devise, le mode et le statut de paiement sont toujours vérifiés côté serveur.

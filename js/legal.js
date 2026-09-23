@@ -1,18 +1,9 @@
-/* Coordonnées contractuelles à compléter avant la mise en production.
- * Ne jamais inventer ces informations : elles doivent correspondre à l'entité qui
- * encaisse réellement les paiements Stripe et au médiateur auquel elle a adhéré. */
+/* Coordonnées publiques de l'entité qui encaisse les paiements Stripe. */
 export const LEGAL = Object.freeze({
-  sellerName: 'À compléter',
-  legalForm: 'forme juridique à compléter',
-  address: 'adresse postale à compléter',
-  registration: 'SIREN / SIRET à compléter',
-  email: 'e-mail de contact à compléter',
-  phone: 'téléphone à compléter',
-  mediator: 'nom, adresse et site du médiateur de la consommation à compléter',
-  retention: 'durée des parties à compléter ; justificatifs d’achat conservés selon les délais légaux'
+  sellerName: 'DB Digital',
+  registration: 'SIRET 102 527 264 00018',
+  email: 'dbartisandigital@gmail.com'
 });
-
-const REQUIRED = ['sellerName', 'legalForm', 'address', 'registration', 'email', 'phone', 'mediator', 'retention'];
 
 export function initLegal(root = document) {
   root.querySelectorAll('[data-legal]').forEach(node => {
@@ -28,10 +19,4 @@ export function initLegal(root = document) {
       link.setAttribute('aria-disabled', 'true');
     }
   });
-
-  const ready = REQUIRED.every(key => {
-    const value = LEGAL[key];
-    return value && !/compl[ée]ter/i.test(value);
-  });
-  root.querySelectorAll('[data-legal-warning]').forEach(node => { node.hidden = ready; });
 }
